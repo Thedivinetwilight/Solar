@@ -36,3 +36,16 @@ Hash stability verified across two independent extraction paths (git show to fil
 These will NOT be reconstructed or guessed. Historical numerical values quoted in the
 handoff context are carried forward into the V1.8 ledger as HANDOFF-QUOTED (second-hand
 provenance) and are flagged accordingly.
+
+## Primary source acquisition log (V1.8, 2026-09-30)
+
+| source | id | access | notes |
+|---|---|---|---|
+| Accepted author version (main text) | AA2020-ACCEPTED-TUB | OBTAINED (text) | TU Berlin DepositOnce, DOI 10.14279/depositonce-15127, CC BY. Read in full via platform fetcher (17 chunks). Binary PDF NOT stored: sandbox TLS blocks depositonce.tu-berlin.de; git repo is the intake path for images. |
+| DNB mirror (identical file) | AA2020-ACCEPTED-DNB | OBTAINED (text) | d-nb.info/1251875920/34; verified same text stream. |
+| Official publisher SI | AA2020-SI-ABSENT | ACCESS_BLOCKED | V1.7 finding stands (HTTP 403). |
+| PhD thesis (32.69 MB, 281 pp) | AA2020-THESIS-ABSENT | MISSING-VERIFIED | Not obtained this session; exceeds GitHub web-upload limit (25 MB) — needs git push by owner or alternative access. |
+
+Figure images (Fig. 4E, Fig. S32) + SI text: **PENDING user commit to this repo**
+(intake path: commit under uploads/ or any path; I pull via git, hash, and
+proceed with the 3-method re-digitization per v1.8_eqe_digitization_audit.md §A.4).

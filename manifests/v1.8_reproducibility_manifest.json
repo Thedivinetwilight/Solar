@@ -1,0 +1,80 @@
+{
+  "project": "APMT",
+  "version": "1.8",
+  "date_utc": "2026-09-30",
+  "git": {
+    "repo": "Thedivinetwilight/Solar",
+    "branch": "arena/01a0f34b-solar",
+    "base_commit": "8e9348a6bfbeef61c5d7e6db7b63d075bd0eed16",
+    "authoritative_context_files_commit": "ed8e7df (origin/main, 'Add files via upload'; note: files committed at repo root, not under uploads/)"
+  },
+  "environment": {
+    "python": "3.11.2",
+    "numpy": "2.4.6",
+    "scipy": "1.17.1",
+    "pvlib": "0.16.1",
+    "pillow": "12.3.0",
+    "pytest": "9.1.1"
+  },
+  "spectrum": {
+    "standard": "ASTM G173-03 AM1.5G global tilt (37 deg)",
+    "distribution": "NLR Excel table as shipped with pvlib (https://www.nlr.gov/grid/solar-resource/spectra-am1.5)",
+    "library": "pvlib 0.16.1",
+    "identification": "integrated irradiance 1000.370656 W/m2 and 100%-EQE incident photon current 68.982857 mA/cm2 (280-5000 nm) reproduce V1.1/V1.2.2 project values to six decimals",
+    "fingerprint": "59040a85966f9c13ad394443bbafa5eb654df6aca58338a7a763f341b53d0eb0"
+  },
+  "primary_sources": [
+    {
+      "id": "AA2020-ACCEPTED-TUB",
+      "desc": "Accepted author version, Science 370:1300-1309 (2020)",
+      "url": "https://depositonce.tu-berlin.de/items/7b856d70-3405-4898-8bf9-33ed955ee45c",
+      "doi": "10.14279/depositonce-15127",
+      "access": "OBTAINED (text read in full 2026-09-30 via platform fetcher; CC BY)",
+      "note": "binary PDF not stored in sandbox (TLS-blocked); text verified; figure images PENDING user commit"
+    },
+    {
+      "id": "AA2020-ACCEPTED-DNB",
+      "desc": "DNB mirror of same accepted version",
+      "url": "https://d-nb.info/1251875920/34",
+      "access": "OBTAINED (content-identical, verified same text stream)"
+    },
+    {
+      "id": "AA2020-SI-ABSENT",
+      "desc": "Official publisher SI (AAAS)",
+      "access": "ACCESS_BLOCKED (V1.7 finding; re-confirmed)"
+    },
+    {
+      "id": "AA2020-THESIS-ABSENT",
+      "desc": "Al-Ashouri PhD thesis TU Berlin 2021 (32.69 MB, 281 pp)",
+      "url": "https://depositonce.tu-berlin.de/items/604e41e4-dc23-414d-a12f-db226058ae40",
+      "access": "MISSING-VERIFIED (not obtained this session)"
+    }
+  ],
+  "hashes": {
+    "INCOMING/APMT_FULL_NEW_CHAT_HANDOFF_CONTEXT.txt": "766f573d6c6054c47a3f7b6a7b5f76b6490f71916f3053c208b3cec9fb506c02",
+    "INCOMING/APMT_V1.8_EVIDENCE_RECOVERY_MASTER_PROMPT.txt": "54026828bda3b79c806686ef86537624275f1ff7936e76fb35c95da7815607c4",
+    "apmt/__init__.py": "deeca1efa7b249eba966f4fe4883f7ce1b37516bc35416cba839c29a475b8eaa",
+    "apmt/eqe_digitize.py": "9fb45f6a83d87494c651bb23bac88d39f4ad5b59780a41f525fd2dc74413e1b4",
+    "apmt/eqe_integrate.py": "9d6e8318b658b8300e7ca0c0029e5f36ba70ea16a632f9cfd942f12f92f0bf6c",
+    "apmt/genealogy.py": "7ae06af73043e86d864e3c4fcbdb92d4156a888e8f342d4d521e0c09c44e4ce5",
+    "apmt/ledger.py": "88b57ffbd67c7f33bbea385b347aabd399a641bdf1210bee38f60d9578a8d9da",
+    "apmt/provenance.py": "a685b7d2589c8f33ef33b0f134065de9ae81220e905755c3b0f293eeff955ec7",
+    "apmt/spectrum.py": "80389996906a789c8a423ad92b86ed59ee63be4a55ad411a12a320f772e6864c",
+    "apmt/validation_gate.py": "fb66aa3baccfb53c7ca83426e6c155e5833505a77f84a2edeb076e21dca7e559",
+    "tests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "tests/test_digitization_pipeline.py": "5adf9da2b10f0463aa7e2e0309aade60d1a83085c5ae8e3750f29964908e5787",
+    "tests/test_gate_strict.py": "0993cabe9a8ab8ee91988cfaef3605552d8edb88fe01c53f61b79138e7a1d7c0",
+    "tests/test_no_device_merging.py": "8e75091795412a93e31a414ae87370b4e39f5d4dcfae9a3818a1c4124a13efc5",
+    "tests/test_no_unsupported_rescaling.py": "2a750b7640307e463ec586d3bbbb8aacd7704356a55b3ea45a7e86dd3a5f39d2",
+    "tests/test_provenance.py": "7c4b6a4d50a39b9c24910edbd821ef10059eaada48e58ad97b7e98e3fcecbed1",
+    "tests/test_spectrum_known_answers.py": "7590a392bd8bb4d42efd714e432afef237edd509f04d55e039d29dd721faaca1",
+    "v1.8_full_report.md": "08971a014154a6f56fd43f2fc600202a592eb21a7985977bd70a6cb544259429",
+    "v1.8_evidence_reconciliation.md": "378ee3fa2c9e52f7e094c2ae4f3c1292384860de59a073df0a18878c0c0f7044",
+    "v1.8_eqe_digitization_audit.md": "c6aa0654f30356bc448867debe0ccf287c7f13a094ecc3de7f6b8ee1abf0799d",
+    "v1.8_eqe_provenance.csv": "b43d32d03e5cb8f3bf3711b24efcfe312c009556cb247866b63c61af11de2258",
+    "v1.8_device_genealogy.csv": "e8384396ee89a00b04a50b91b0fd8e51ec5d4e9fb81baf2ff7cfaac093555a5c",
+    "v1.8_measurement_schema.json": "d6ec58ddc055b5da7e066b58997c1dfe5b56fa333601dd9975ec46245208df5d",
+    "v1.8_validation_gate.json": "de6c97ce6884773c2e78bc64c12c54e9c309b66110fc9bf3de8d8eefebd6a256",
+    "v1.8_changelog.md": "4ab778dbd0274dcc05b6462bc19304735f3091424f2f5eebaca62e29472f98c1"
+  }
+}

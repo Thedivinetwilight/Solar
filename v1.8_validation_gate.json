@@ -1,0 +1,51 @@
+{
+  "gate": "APMT conventional-baseline validation gate",
+  "version": "1.8",
+  "policy": "PASS only when independent evidence sufficiently constrains the conventional baseline; otherwise FAIL/DEFER. No APMT efficiency claim while gate is not PASS.",
+  "strict": true,
+  "thresholds": {
+    "G1_jsc_eqe_abs_tol_ma_cm2": 0.3,
+    "G2_jsc_abs_tol_ma_cm2": 0.2,
+    "G3_jv_rmse_tol_ma_cm2": 1.0,
+    "G4_scan_dir_tol_ma_cm2": 0.2,
+    "G5_rta_closure_tol": 0.05,
+    "G6_min_linkage_class": "CERTIFIED_CHAMPION_CONTEXT_LINKAGE",
+    "G7_resistance_must_be_measured": true,
+    "G8_condition_number_max": 10000.0,
+    "G8_boundary_hits_max": 0,
+    "G9_all_claims_must_have_verified_provenance": true
+  },
+  "checks": [
+    "G1 EQE-integral agreement |Jsc(J-V)-Jsc(EQE)|",
+    "G2 Jsc agreement vs certified value",
+    "G3 J-V curve agreement (RMSE)",
+    "G4 scan-direction separation",
+    "G5 R+T+A=1 full-stack optical closure",
+    "G6 device genealogy completeness (linkage classes)",
+    "G7 external resistance constraints (Rs/Rsh measured)",
+    "G8 parameter identifiability (condition number, boundary hits)",
+    "G9 source/figure consistency (provenance for every claim)"
+  ],
+  "notes": [
+    "Threshold relaxations require a new GateThresholds object with recorded justification.",
+    "NO_SERIAL_ID at context-level linkage is flagged, not failing, because primary sources lack serial IDs; serial-level data is DATA_REQUIRED for full closure."
+  ],
+  "status_as_of_v1_8": {
+    "gate_state": "CLOSED (FAIL/DEFER)",
+    "reason": "Conventional baseline remains DATA-LIMITED: unresolved HZB silicon EQE curve-vs-reported-value conflict (20.18 source-reported vs 16.90-17.11 digitized), no full-stack R/T/A, no external Rs/Rsh, non-identifiable historical fit (condition number 1.216e6, boundary hits).",
+    "checks_failing_on_current_evidence": [
+      "G1",
+      "G8"
+    ],
+    "checks_deferred_on_current_evidence": [
+      "G2 (partially evidable)",
+      "G5",
+      "G7"
+    ],
+    "reopen_requires": [
+      "same-device machine-readable top/bottom EQE linked to certified JV device/context",
+      "complete-stack R/T/A closure",
+      "external electrical-loss measurements (Rs/Rsh) sufficient to make the baseline identifiable"
+    ]
+  }
+}

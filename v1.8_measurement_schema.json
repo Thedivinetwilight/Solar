@@ -1,0 +1,340 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Thedivinetwilight/Solar/v1.8_measurement_schema.json",
+  "title": "APMT V1.8 Lab-Ready Measurement Record",
+  "description": "Machine-readable schema for the minimum future experiment that can validate (or falsify) the conventional perovskite/silicon tandem baseline. Every record MUST carry device ID, measurement ID, raw-file hash, instrument, calibration state, wavelength range, spectrum, temperature, uncertainty, operator/instrument metadata, processing history, provenance, timestamp, units, and file format/version. Raw files are immutable; processed data are separate records referencing the raw record. A record with category DIGITIZED must never be labeled EXPERIMENTAL.",
+  "version": "1.8",
+  "type": "object",
+  "required": [
+    "schema_version", "record_id", "device_id", "measurement_id", "measurement_type",
+    "timestamp_utc", "raw_file", "instrument", "calibration_state", "provenance"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.8" },
+    "record_id": { "type": "string", "pattern": "^m[-_][0-9]{8}[-_][0-9a-f]{6,}$" },
+    "device_id": {
+      "type": "string",
+      "description": "Stable physical device identifier. MUST be unique per physical cell. If the source/lab does not assign one, generate one at first contact and record the mapping. Never reuse a device_id for two physical cells."
+    },
+    "device_genealogy": {
+      "type": "object",
+      "description": "Linkage of this device to other devices used in the analysis.",
+      "properties": {
+        "serial_id": { "type": ["string", "null"] },
+        "fabrication_batch": { "type": ["string", "null"] },
+        "configuration": { "type": "string" },
+        "linkages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["other_device_id", "linkage_class", "evidence"],
+            "properties": {
+              "other_device_id": { "type": "string" },
+              "linkage_class": { "enum": ["SERIAL_LEVEL_LINKAGE", "CERTIFIED_CHAMPION_CONTEXT_LINKAGE", "CONFIGURATION_LEVEL_LINKAGE", "UNKNOWN_PAIRING"] },
+              "evidence": { "type": "string" },
+              "serial_available": { "type": "boolean" }
+            }
+          }
+        }
+      }
+    },
+    "measurement_id": { "type": "string" },
+    "measurement_type": {
+      "enum": [
+        "top_eqe", "bottom_eqe", "fullstack_eqe",
+        "reflection_R", "transmission_T", "absorption_A", "rta_closure",
+        "jv_illuminated", "jv_dark_external", "suns_voc", "jsc_voc",
+        "rs_rsh", "contact_interconnection_loss",
+        "pl_absolute", "el_absolute", "el_pseudo_jv",
+        "jv_mpp_temperature_resolved",
+        "absorber_thickness"
+      ]
+    },
+    "category": {
+      "enum": ["EXPERIMENTAL", "LITERATURE-DERIVED", "DIGITIZED", "MODEL-FIT", "MODEL-ASSUMED", "DATA_REQUIRED", "SCENARIO", "SOURCE-REPORTED"],
+      "description": "Provenance category. DIGITIZED = extracted from a published figure; NEVER raw measured data."
+    },
+    "timestamp_utc": { "type": "string", "format": "date-time" },
+    "raw_file": {
+      "type": "object",
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "type": "string" },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "format": { "type": "string" },
+        "immutable": { "const": true }
+      }
+    },
+    "instrument": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "model": { "type": ["string", "null"] },
+        "serial": { "type": ["string", "null"] },
+        "detector": { "type": ["string", "null"] },
+        "reference_cell": { "type": ["string", "null"], "description": "For EQE: reference cell ID, its own calibration date and certificate. For J-V: solar simulator model and class (A/B)." },
+        "software_version": { "type": ["string", "null"] }
+      }
+    },
+    "calibration_state": {
+      "type": "object",
+      "required": ["status", "date_utc"],
+      "properties": {
+        "status": { "enum": ["VALID", "EXPIRED", "UNKNOWN"] },
+        "date_utc": { "type": "string" },
+        "reference_file_sha256": { "type": ["string", "null"] },
+        "notes": { "type": ["string", "null"] }
+      }
+    },
+    "wavelength_range_nm": {
+      "type": "object",
+      "properties": {
+        "lo": { "type": "number" },
+        "hi": { "type": "number" }
+      }
+    },
+    "spectrum": {
+      "type": "object",
+      "description": "The exact spectrum used (or intended) for any current extraction.",
+      "properties": {
+        "standard": { "type": "string", "examples": ["ASTM G173-03 AM1.5G global tilt"] },
+        "distribution": { "type": "string" },
+        "data_file_sha256": { "type": ["string", "null"] },
+        "integrated_irradiance_w_m2": { "type": ["number", "null"] }
+      }
+    },
+    "temperature": {
+      "type": "object",
+      "properties": {
+        "value_k": { "type": ["number", "null"] },
+        "controlled": { "type": "boolean" },
+        "resolution_k": { "type": ["number", "null"] }
+      }
+    },
+    "uncertainty": {
+      "type": "object",
+      "description": "Expanded uncertainty (k=2) per reported quantity, or explicit 'not_evaluated' with reason. Scenario spread is NOT a confidence interval and must not be placed here as uncertainty without a probabilistic model.",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "value": { "type": ["number", "null"] },
+          "units": { "type": "string" },
+          "method": { "type": "string" }
+        }
+      }
+    },
+    "operator_metadata": {
+      "type": "object",
+      "properties": {
+        "operator": { "type": ["string", "null"] },
+        "lab": { "type": ["string", "null"] },
+        "environment": { "type": ["string", "null"] }
+      }
+    },
+    "processing_history": {
+      "type": "array",
+      "description": "Ordered log of every processing step. Empty = raw record. Vertical scaling of an EQE curve MUST appear here with an explicit primary-source citation, else it is a schema violation.",
+      "items": {
+        "type": "object",
+        "required": ["step", "timestamp_utc"],
+        "properties": {
+          "step": { "type": "string" },
+          "timestamp_utc": { "type": "string" },
+          "parameters": { "type": "object" },
+          "vertical_transform_applied": { "type": "boolean", "default": false },
+          "transform_citation": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["source_id"],
+      "properties": {
+        "source_id": { "type": "string" },
+        "source_url": { "type": ["string", "null"] },
+        "source_sha256": { "type": ["string", "null"] },
+        "locator": { "type": ["string", "null"], "description": "figure/table/page for literature-derived or digitized records" },
+        "lawfulness_note": { "type": ["string", "null"] }
+      }
+    },
+    "results": { "type": "object", "description": "Measurement-specific payload (see measurement_type payloads below)." }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "measurement_type": { "enum": ["top_eqe", "bottom_eqe", "fullstack_eqe"] } } },
+      "then": {
+        "properties": {
+          "results": {
+            "required": ["eqe_points", "integrated_jph_ma_cm2", "integration_window_nm"],
+            "properties": {
+              "eqe_points": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["wavelength_nm", "eqe"],
+                  "properties": {
+                    "wavelength_nm": { "type": "number" },
+                    "eqe": { "type": "number", "minimum": 0, "maximum": 1 }
+                  }
+                },
+                "minItems": 10
+              },
+              "integrated_jph_ma_cm2": { "type": "number" },
+              "integration_window_nm": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
+              "spectrum_standard": { "type": "string" },
+              "digitalization_method": { "type": ["string", "null"], "description": "For DIGITIZED records: method + figure source + axis calibration + pixel uncertainty. REQUIRED for DIGITIZED, forbidden for EXPERIMENTAL." },
+              "mask_configuration": { "type": ["string", "null"], "description": "For tandem subcell EQE: masking/short-circuit configuration used, or 'full-stack'." }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "measurement_type": { "enum": ["reflection_R", "transmission_T", "absorption_A", "rta_closure"] } } },
+      "then": {
+        "properties": {
+          "results": {
+            "required": ["spectrum_points"],
+            "properties": {
+              "spectrum_points": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["wavelength_nm", "value"],
+                  "properties": {
+                    "wavelength_nm": { "type": "number" },
+                    "value": { "type": "number", "minimum": 0, "maximum": 1 }
+                  }
+                },
+                "minItems": 10
+              },
+              "rta_max_deviation": { "type": ["number", "null"], "description": "For rta_closure: max|R+T+A-1| across the shared wavelength grid." }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "measurement_type": { "enum": ["jv_illuminated", "jv_dark_external", "jv_mpp_temperature_resolved"] } } },
+      "then": {
+        "properties": {
+          "results": {
+            "required": ["iv_points"],
+            "properties": {
+              "iv_points": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["voltage_v", "current_density_ma_cm2"],
+                  "properties": {
+                    "voltage_v": { "type": "number" },
+                    "current_density_ma_cm2": { "type": "number" },
+                    "scan_direction": { "type": ["string", "null"], "enum": ["jsc_to_voc", "voc_to_jsc", null] }
+                  }
+                },
+                "minItems": 10
+              },
+              "extracted": {
+                "type": "object",
+                "properties": {
+                  "jsc_ma_cm2": { "type": "number" },
+                  "voc_v": { "type": "number" },
+                  "ff": { "type": "number" },
+                  "pce_pct": { "type": "number" },
+                  "mppt_stabilized": { "type": "boolean" }
+                }
+              },
+              "active_area_cm2": { "type": "number", "description": "MUST be the certified/designated area definition used by the extraction, with the definition stated (e.g. 'MPP designated area 1.064 cm2')." }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "measurement_type": { "enum": ["suns_voc", "jsc_voc"] } } },
+      "then": {
+        "properties": {
+          "results": {
+            "required": ["intensity_points"],
+            "properties": {
+              "intensity_points": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["intensity_suns", "voltage_v"],
+                  "properties": {
+                    "intensity_suns": { "type": "number" },
+                    "voltage_v": { "type": "number" },
+                    "current_density_ma_cm2": { "type": ["number", "null"] }
+                  }
+                },
+                "minItems": 3
+              },
+              "extracted": {
+                "type": "object",
+                "properties": {
+                  "ideality_n": { "type": "number" },
+                  "j0_a_m2": { "type": "number" },
+                  "channel": { "enum": ["radiative", "non_radiative", "effective"] }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "measurement_type": { "enum": ["rs_rsh", "contact_interconnection_loss"] } } },
+      "then": {
+        "properties": {
+          "results": {
+            "required": ["method"],
+            "properties": {
+              "method": { "type": "string", "description": "e.g. 4-point probe on metal, dark-JV extraction, contact resistance TLM. 'method' must be an EXTERNAL measurement, not a model fit parameter." },
+              "rs_ohm_cm2": { "type": ["number", "null"] },
+              "rsh_ohm_cm2": { "type": ["number", "null"] },
+              "loss_ma_cm2": { "type": ["number", "null"] }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "measurement_type": { "enum": ["pl_absolute", "el_absolute", "el_pseudo_jv"] } } },
+      "then": {
+        "properties": {
+          "results": {
+            "required": ["excitation"],
+            "properties": {
+              "excitation": { "type": "string", "description": "e.g. '455 nm 1-sun equivalent' (perovskite) or '850 nm' (Si) or 'injection current range'." },
+              "subcell_voc_implied_v": { "type": "object", "properties": { "perovskite": { "type": ["number", "null"] }, "silicon": { "type": ["number", "null"] } } },
+              "plqy_pct": { "type": "object", "properties": { "perovskite": { "type": ["number", "null"] }, "silicon": { "type": ["number", "null"] } } },
+              "pseudo_jv_note": { "type": ["string", "null"], "description": "EL-derived pseudo-JV is INTERNAL: it lacks external series resistance. Must never be presented as an external J-V." }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "measurement_type": { "const": "absorber_thickness" } } },
+      "then": {
+        "properties": {
+          "results": {
+            "required": ["method"],
+            "properties": {
+              "method": { "type": "string", "description": "e.g. ellipsometry, SEM cross-section, ellipsometry-on-TEM. 'method' required." },
+              "thickness_nm": { "type": "number" },
+              "thickness_uncertainty_nm": { "type": ["number", "null"] }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "notes": [
+    "Same-device requirement: top_eqe and bottom_eqe records that are used together for baseline identification MUST share the same device_id (or a documented SERIAL_LEVEL_LINKAGE).",
+    "Minimum experiment for gate opening: (1) same-device top+bottom EQE, (2) full-stack R/T/A closure, (3) illuminated J-V in both scan directions, (4) external dark-JV, (5) Suns-Voc or Jsc-Voc, (6) Rs/Rsh external, (7) MPPT at >=2 temperatures, (8) absorber thickness, (9) absolute PL/EL where feasible.",
+    "No vertical scaling of EQE is allowed unless processing_history records vertical_transform_applied=true WITH a transform_citation from a primary source."
+  ]
+}
