@@ -1,0 +1,6 @@
+# Large raw source PDFs stay on disk (outside git); hashes in manifests/hashes
+data/sources/*.pdf
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/

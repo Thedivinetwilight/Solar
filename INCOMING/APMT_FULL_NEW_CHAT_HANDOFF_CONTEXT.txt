@@ -1,0 +1,736 @@
+APMT PROJECT — FULL HANDOFF CONTEXT FOR A NEW CHAT
+Date: 30 September 2026
+Purpose: Continue the APMT perovskite/silicon tandem solar-cell research project without restarting from scratch.
+
+IMPORTANT:
+This is the APMT project, NOT the separate Medirover robotics project.
+Do not reset the project to V1.0 or discard prior validation work.
+Current software/research state: V1.7. Next release/workstream: V1.8.
+APMT performance comparison is currently BLOCKED until the conventional baseline is adequately validated.
+
+============================================================
+1. WHAT APMT IS
+============================================================
+
+APMT is our proposed improved perovskite/silicon tandem photovoltaic architecture.
+
+The project started as a Python simulation and evolved into a research-grade experimental-data-ready framework.
+
+Scientific goal:
+Determine whether the APMT architecture produces a real, attributable improvement over a conventional perovskite/silicon tandem under controlled conditions.
+
+Correct scientific order:
+1) establish a defensible conventional baseline,
+2) constrain the baseline with real measurements,
+3) freeze the baseline,
+4) predict APMT effect,
+5) fabricate matched control and APMT devices when justified,
+6) test them under comparable conditions,
+7) attribute any observed difference only after ruling out ordinary measurement/process differences.
+
+Never reverse this order merely to obtain a nice-looking efficiency number.
+
+============================================================
+2. CURRENT STATUS
+============================================================
+
+SOFTWARE_STATUS:
+research-grade experimental-data-ready infrastructure
+
+DATA_STATUS:
+Primary/digitized evidence exists, but important measurements are missing and one important EQE conflict remains unresolved.
+
+BASELINE_STATUS:
+DATA-LIMITED
+
+APMT_STATUS:
+BLOCKED_BY_BASELINE_VALIDATION
+
+EXPERIMENT_READINESS:
+Software is ready to ingest future measurements, but a scientifically attributable controlled APMT comparison is not yet justified.
+
+The V1.7 report states that no fabrication or controlled APMT comparison is currently justified. Minimum remaining blocking evidence is same-device machine-readable top/bottom EQE linked to the certified JV device/context, complete-stack R/T/A closure, and external electrical-loss measurements sufficient to make the conventional baseline identifiable.
+
+V1.7 software includes:
+- formal measurement schemas
+- immutable raw/processed handling
+- ingestion reports
+- device genealogy/provenance graphs
+- reusable EQE forensic analysis
+- optical/electrical constraint modules
+- scenario propagation
+- model-form metadata
+- identifiability artifacts
+- sensitivity/VOI planning
+- digital-twin serialization
+- CLI support
+- synthetic mechanics tests
+- reproducibility manifests
+
+============================================================
+3. VERSION HISTORY
+============================================================
+
+V1.1
+- ASTM G173-03 AM1.5G global-tilt spectrum.
+- Integrated irradiance ~1000.370656 W/m² vs ASTM nominal 1000.37 W/m².
+- Traceable provenance for ASTM G173, silicon optical constants, perovskite bandgap/ideality references.
+- DATA_REQUIRED state.
+- Wavelength-dependent R(λ), T(λ), A(λ), enforcing R+T+A=1 when data exist.
+- Material CSV interfaces for absorption coefficient, EQE/IQE, refractive index.
+- Literature experimental reference-device records.
+- V1 vs V1.1 comparisons and sensitivity screening.
+
+Early V1.1 model results using ASTM G173 plus documented assumptions:
+- silicon baseline ~23.402%
+- tandem ~15.544%
+- tandem + optical management ~16.588%
+- tandem + photon recycling ~15.553%
+- tandem + thermal management ~16.028%
+- full APMT ~17.174%
+These were model results under incomplete data, not experimental claims.
+Model state: INCONCLUSIVE.
+
+V1.2
+- Added python main.py --calibrate-tandem.
+- Added traceable Al-Ashouri 2020 reference data.
+- Provenance classes: EXPERIMENTAL, LITERATURE-DERIVED, MODEL-ASSUMED, DATA_REQUIRED.
+- Bounded calibration of absorber thickness, collection/IQE, external radiative efficiency, reflection, series resistance.
+- Separate PCE/Jsc/Voc/FF comparisons.
+- Conventional tandem loss diagnostics and waterfall-style loss plots.
+- Initial calibration PARTIALLY CALIBRATED.
+- RMS relative error ~23.78%; max absolute relative error ~38.02%.
+
+V1.2 reference vs calibrated:
+Reference/experimental:
+- efficiency = 29.15%
+- Jsc = 19.8 mA/cm²
+- Voc = 1.92 V
+- FF = 0.7668
+
+Calibrated:
+- efficiency = 24.19%
+- Jsc = 12.27 mA/cm²
+- Voc = 2.296 V
+- FF = 0.8589
+
+V1.2.1
+- Simulated top perovskite branch was the current bottleneck (~12.27 mA/cm²).
+- Simulated bottom ~20.78 mA/cm².
+- Tandem current ~12.27 mA/cm².
+- Current discrepancy ~7.53 mA/cm².
+- This did NOT prove a real-device top-cell bottleneck because device-specific optical/EQE data were missing.
+- Found structural voltage-model problem: top simulated Voc exceeded its radiative limit because a phenomenological n=1.26 multiplier was combined with a fixed radiative dark current.
+- Perovskite thickness optimizer hit ~1000 nm upper bound.
+- 8 fitted parameters vs 4 aggregate observables caused non-identifiability.
+
+V1.2.2
+- Corrected voltage physics.
+- Separate radiative and non-radiative recombination channels.
+- Radiative channel n=1 defines true radiative-limit voltage.
+- Non-radiative channel only lowers Voc.
+- Status DATA-LIMITED.
+- APMT evaluation/optimization NOT run.
+
+V1.2.2 diagnostics:
+Reference:
+- PCE 29.15%
+- Jsc 19.8 mA/cm²
+- Voc 1.92 V
+- FF 0.7667824 (derived from published PCE/Jsc/Voc, not independently digitized)
+
+Uncalibrated:
+- efficiency 14.16255%
+- Jsc 7.85449 mA/cm²
+- Voc 2.33683 V
+
+Calibrated:
+- efficiency 23.63256%
+- Jsc 12.27268 mA/cm²
+- Voc 2.21479 V
+- FF 0.869760
+
+Current waterfall:
+- incident photon current 68.982857 mA/cm²
+- front coupling 0.95
+- after front coupling 65.533714 mA/cm²
+- perovskite generation/collection 12.272679 mA/cm²
+- silicon absorption contribution 25.253142 mA/cm²
+- silicon collection 19.645891 mA/cm²
+- tandem current matching 12.272679 mA/cm²
+- reference gap ~7.5273 mA/cm²
+- no correction factor inserted
+
+Corrected Voc diagnostics:
+Top perovskite:
+- Jsc 122.7268 A/m²
+- j0_rad 5.1329e-23
+- j0_nonrad 1.1322e-21
+- external radiative efficiency 0.043368
+- n_nonrad 1.26
+- thermal voltage 0.0257335 V
+- radiative-limit Voc 1.444518 V
+- simulated Voc 1.4445127 V
+- non-radiative voltage loss ~5.29e-6 V
+
+Bottom silicon:
+- radiative-limit Voc 0.878596 V
+- simulated Voc 0.770278 V
+- non-radiative loss 0.108318 V
+
+Tandem:
+- simulated Voc 2.214791 V
+- total radiative limit 2.323114 V
+- total non-radiative loss 0.108323 V
+
+V1.2.2 parameter diagnostics:
+- perovskite thickness ~1000 nm, bounds 250–1000 nm, upper-bound hit
+- silicon thickness ~288.7169 µm, bounds 140–300 µm
+- perovskite IQE 1.0, bounds 0.75–1, upper-bound hit
+- silicon IQE ~0.77944
+- perovskite external radiative efficiency ~0.043368
+- silicon external radiative efficiency ~0.000102756
+- front reflection = 0.02, lower-bound hit
+- series resistance ~0.0005032 ohm·m²
+Boundary hits mean parameter/data insufficiency, not measured device values.
+
+V1.3
+- Froze conventional baseline before APMT.
+- Baseline PCE ~23.633%.
+- Full APMT model ~24.242%.
+- Difference ~+0.610 percentage points.
+- Relative improvement ~+2.58%.
+- Optical management ~24.111%.
+- Photon recycling ~22.723%.
+- Thermal management ~21.863%.
+- Full APMT ~24.242%.
+- Baseline remained DATA-LIMITED.
+- Conventional: Jsc 12.2727 mA/cm², Voc 2.21479 V, FF 0.86976, PCE 23.6326%.
+- Historical V1.3 result remains MODEL-OBSERVED / ASSUMPTION-DEPENDENT, NOT experimental proof.
+
+V1.4
+- Major shift toward primary evidence reconstruction.
+- Al-Ashouri primary accepted manuscript and supplementary material mined.
+- Curves digitized.
+- Same-device contextual evidence investigated.
+- Curve-level validation and strict APMT gate added.
+- Baseline PARTIALLY_VALIDATED.
+- Physical APMT proof-of-concept NOT justified.
+
+V1.4 source/evidence:
+- source count 7
+- primary author-version available
+- official publisher SI inaccessible in prior work
+- accepted manuscript 69 pages
+- 4 digitized curve files
+- Tables S1–S3
+- aggregate values including Jsc ~19.23, top EQE ~19.41, bottom EQE reported ~20.18, PL-implied subcell Voc ~1.18/0.72, PLQY ~0.02/1.5
+
+V1.4 curve results:
+- certified illuminated J-V digitized curve RMSE 0.9170
+- normalized RMSE 0.047897
+- max absolute deviation 3.69575
+- status PASS_IF_CONTEXTUALIZED
+- top EQE graphical integral 19.984 vs reported 19.41
+- bottom EQE graphical integral 16.902 vs reported 20.18
+- bottom EQE FAIL_CURVE_INTEGRAL_DISCREPANCY
+- no vertical retuning
+- complete-stack R/T/A unavailable
+- 1-R not treated as absorption
+- external dark-JV unavailable
+- Fig S36 is EL-derived/internal pseudo-JV and lacks external series resistance
+
+V1.4 candidate electrical fit:
+- Jph fixed 19.23 mA/cm²
+- T fixed 298.15 K
+- free parameters: effective non-rad saturation current, non-rad ideality, external series resistance, shunt resistance
+- rank 4 of 4
+- condition number 1,216,249.34
+- boundary hits/weak constraints
+- strong correlations including J0/n ≈0.9999 and Rsh near 1.0
+- fitted values are NOT measurements
+
+V1.4 candidate baseline output:
+- Jsc 19.229803 mA/cm²
+- Voc 1.910204 V
+- FF 0.826282
+- PCE 30.34048%
+- Vmp 1.62857 V
+- Jmp 18.6370
+- Pmax 303.517 W/m²
+This 30.34% is a model-fit candidate to a digitized curve, NOT a measured device achievement.
+
+V1.4 reference values:
+- certified JV scan Jsc ~19.26
+- Voc ~1.9
+- FF ~0.7952
+- PCE ~29.05 for scan context
+- certified MPP PCE 29.15%
+- author-version Jsc 19.23
+
+V1.5
+- Baseline remained DATA-LIMITED.
+- Primary source mining expanded.
+- Same-device pairing investigated.
+
+Certified in-house JV Fig S31:
+- Jsc→Voc: Jsc 19.35, Voc 1.91, FF 0.7851, PCE 29.00
+- Voc→Jsc: Jsc 19.36, Voc 1.91, FF 0.7887, PCE 29.14
+- certified MPP 29.15
+Do not average scan-direction results into a fake measurement.
+
+V1.5 bottom EQE:
+- Fig S32 graphical integral ~17.110498 mA/cm²
+- reported HZB silicon value 20.18 mA/cm²
+- required vertical scale factor 1.1793929
+- scaling NOT applied
+- UNRESOLVED_DATA_CONFLICT
+
+V1.5 device genealogy:
+- certified external JV: strong certified-champion context, serial not recoverable
+- certified in-house JV Fig S31: same champion stated by caption/context, serial absent
+- HZB EQE Fig 4E/S32: champion context, unique serial unavailable
+- Table S1 contains multiple cells and no serial IDs
+- Table S2 gives champion configuration-level information
+- PL/EL representative device is not explicitly certified serial
+- thermal MPP is a separate configuration and must not be merged with champion LiF data
+
+V1.6
+Focused on forensic analysis of the bottom-EQE discrepancy.
+
+Tested:
+- wavelength-axis shifts
+- integration limits
+- AM1.5G weighting
+- EQE vs 1-R interpretation
+- branch extraction
+- vertical scaling
+- additive offset
+- graph/pixel geometry
+- interpolation
+- spectral normalization
+- figure resolution
+- truncation
+- possible different measurement/device
+- table-vs-curve interpretation
+- thesis alternate curve
+- author-hosted raw data
+- alternate spectral condition
+- source-reporting inconsistency
+
+Key values:
+- S32 graphical bottom EQE integral = 17.1104981189 mA/cm²
+- Fig 4E independent reconstruction = 16.9019365812 mA/cm²
+- primary reported value = 20.18 mA/cm²
+- 20.18 - 17.110498 = 3.069502 mA/cm²
+- 20.18 - 16.901937 = 3.278063 mA/cm²
+
+Wavelength shifts:
+-25 nm -> 17.829526
+-10 nm -> 17.440494
+0 -> 17.110498
++10 nm -> 16.910552
++25 nm -> 16.564252
+No resolution.
+
+Integration windows:
+- 300–1100 nm -> 16.571743
+- 300–1200 nm -> 17.110364
+- 300–1250 nm -> 17.110498
+No resolution.
+
+Spectral weighting:
+- global AM1.5G -> 17.110498
+- direct -> 15.977131
+- direct normalized to global radiant energy -> 17.756199
+No resolution.
+
+Required vertical normalization:
+~1.1793929x. Unsupported and NOT applied.
+
+Required additive EQE offset:
+~13.773 percentage points. Unsupported and NOT observed/documented.
+
+Graphical uncertainty interval around S32 from digitization metadata:
+~16.6105 to ~17.6105 mA/cm², no overlap with 20.18.
+
+1-R issue:
+- dashed 1-R curve is separate from EQE.
+- integrated 1-R proxy ~42.714137.
+- 1-R is NOT a valid explanation for the 20.18 EQE number.
+- never treat 1-R as useful absorption without complete R/T/A.
+
+V1.6 final forensic decision:
+UNRESOLVED_DATA_CONFLICT
+
+Description supported by the evidence:
+SOURCE_REPORTING_INCONSISTENCY
+But scientific resolution remains UNRESOLVED_DATA_CONFLICT because underlying source data are absent.
+
+V1.6 scenarios:
+A: reported bottom 20.18, top 19.41 -> current matching 19.41
+B: graphical S32 17.110498 -> current matching 17.110498
+C: graphical Fig 4E 16.901937 -> current matching 16.901937
+D: certified measured Jsc 19.23 -> measured-device-current scenario
+
+Historical model-fit scenario PCE values were also propagated, but they are NOT device measurements:
+- 20.18 case ~30.636%
+- 17.110498 case ~27.007%
+- 16.901937 case ~26.677%
+- certified Jsc 19.23 case ~30.352%
+Never report these as validated measured efficiencies.
+
+V1.7
+- No new APMT mechanism was run.
+- Reconciled accepted manuscript, supplements, thesis, repository mirror, local data, lawful public searches.
+- Official publisher SI remained ACCESS_BLOCKED / HTTP 403.
+- No new target-device raw EQE series recovered.
+- Upgraded architecture for future experimental data.
+- Added/strengthened formal measurement schema, immutable raw/processed storage, genealogy, provenance graph, EQE forensic engine, optical/electrical interfaces, model-form uncertainty, scenario propagation, sensitivity/VOI, digital twins, CLI, synthetic tests, reproducibility.
+
+V1.7 exact high-level state:
+SOFTWARE_STATUS = research-grade experimental-data-ready
+DATA_STATUS = primary/digitized evidence with unresolved EQE conflict and missing measurements
+BASELINE_STATUS = DATA-LIMITED
+APMT_STATUS = BLOCKED_BY_BASELINE_VALIDATION
+EXPERIMENT_READINESS = software ready; controlled APMT attribution not yet justified
+
+============================================================
+4. PRIMARY REFERENCE DEVICE / LITERATURE
+============================================================
+
+Primary reference:
+Al-Ashouri et al., Science 370, 1300–1309 (2020)
+DOI: 10.1126/science.abd4016
+
+Important reported context:
+- certified tandem PCE 29.15%
+- perovskite bandgap 1.68 eV
+- tandem Voc up to ~1.92 V
+- reported ideality factor 1.26
+- perovskite/silicon tandem architecture
+- Me-4PACz/LiF champion configuration is important to the reference-device reconstruction
+
+Working evidence set:
+- accepted author-version manuscript
+- supplementary material embedded/recovered where possible
+- 281-page thesis
+- repository/author copies
+- local machine-readable/digitized artifacts
+Official publisher SI was inaccessible in prior work.
+
+============================================================
+5. IMPORTANT V1.8 REFRAMING OF THE EQE ISSUE
+============================================================
+
+A key V1.8 correction in wording:
+
+Do NOT call 20.18 merely an ambiguous “reported bottom EQE.”
+Use:
+“Author-reported silicon-subcell integrated Jph associated with the certified champion / HZB EQE context.”
+
+The source context for Fig S32 identifies the HZB EQE curves as the certified champion device measured in-house, with HZB perovskite 19.41 and HZB silicon 20.18.
+
+Therefore:
+- champion-context pairing evidence is stronger than previously phrased;
+- unique serial-level linkage is still unavailable;
+- graphical reconstructions remain ~16.90–17.11;
+- the precise conflict is:
+  “The same primary-source HZB/certified-champion EQE context reports 20.18 mA/cm² for silicon, while independent graphical digitization of the plotted HZB silicon EQE curve(s) yields ~16.90–17.11 mA/cm².”
+
+This does NOT justify rescaling.
+
+============================================================
+6. V1.8 — ACTIVE NEXT RELEASE
+============================================================
+
+MISSION:
+Advance from V1.7 DATA-LIMITED toward a defensible conventional baseline.
+Do not run or report a new APMT efficiency comparison until the baseline gate is reopened by evidence.
+
+V1.8 is:
+- evidence recovery
+- source reconciliation
+- EQE re-digitization audit
+- measurement schema creation
+- genealogy upgrade
+- validation-gate preparation
+- reproducibility upgrade
+
+OBJECTIVE A — RE-AUDIT EQE DIGITIZATION
+1. Find the highest-resolution lawful copies of Fig 4E and Fig S32.
+2. Record source identifier/URL, file hash, page, figure number, image resolution.
+3. Extract actual HZB silicon EQE branch.
+4. Re-digitize independently using >=3 methods where practical:
+   - manual point selection + axis calibration
+   - color/curve segmentation
+   - independent alternative digitization route/tool
+5. Separate:
+   - HZB Si EQE
+   - HZB perovskite EQE
+   - Sahli Si EQE
+   - Sahli perovskite EQE
+   - dashed 1-R curves
+6. Check curve identity near crossover.
+7. Recompute AM1.5G-integrated Jph with the same ASTM G173 global spectrum used by the project.
+8. Quantify digitization uncertainty.
+9. Compare independent results against 19.41 and 20.18.
+10. Do not apply vertical scaling or offset unless a primary source explicitly documents it.
+
+OBJECTIVE B — SOURCE REPORTING CONSISTENCY
+Trace every occurrence of 19.41, 20.18, 39.59 across:
+- main article
+- supplementary material
+- thesis
+- author/repository copies
+- Tables S1/S2/S3
+- captions
+- local machine-readable records
+
+Build provenance table:
+source, figure/table, device context, measurement modality, reported value, serial availability, pairing class, confidence, processing assumptions.
+
+Determine whether 20.18 is:
+- identical calculation reused,
+- independently measured,
+- a figure annotation derived from another dataset,
+- or still unresolved.
+
+Never merge devices merely because configuration names match.
+
+OBJECTIVE C — DEVICE GENEALOGY
+Use these linkage classes:
+- SERIAL_LEVEL_LINKAGE
+- CERTIFIED_CHAMPION_CONTEXT_LINKAGE
+- CONFIGURATION_LEVEL_LINKAGE
+- UNKNOWN_PAIRING
+
+Certified JV + Fig S31 + Fig 4E/S32 should be represented as strong champion-context evidence while still NO_SERIAL_ID when no serial exists.
+
+OBJECTIVE D — LAB-READY MEASUREMENT SCHEMA
+Create a machine-readable schema for:
+- same-device top EQE
+- same-device bottom EQE
+- full-stack R(λ)
+- full-stack T(λ)
+- full-stack A(λ)
+- illuminated J-V
+- external dark-JV
+- Suns-Voc and/or Jsc-Voc
+- Rs/Rsh
+- contact/interconnection losses
+- absolute PL/EL
+- temperature-resolved J-V/MPP
+- absorber thickness
+
+Every record should support:
+- device ID
+- measurement ID
+- raw-file hash
+- instrument
+- calibration state
+- calibration/reference file where applicable
+- wavelength range
+- spectrum
+- temperature
+- uncertainty
+- operator/instrument metadata
+- processing history
+- provenance
+- timestamp
+- units
+- file format/version
+
+OBJECTIVE E — BASELINE GATE AUTOMATION
+Automated checks for:
+- EQE integral agreement
+- Jsc agreement
+- J-V curve agreement
+- scan-direction separation
+- R+T+A=1 closure
+- device genealogy completeness
+- external resistance constraints
+- parameter identifiability
+- source/figure consistency
+
+Strict gate:
+PASS only when independent evidence sufficiently constrains the conventional baseline.
+Otherwise FAIL/DEFER.
+
+OBJECTIVE F — NO NEW APMT CLAIMS
+No new APMT mechanism execution for the purpose of generating a PCE uplift in V1.8.
+Historical V1.3 baseline ~23.633%, full APMT ~24.242%, Δ~+0.610 percentage points remains MODEL-OBSERVED / ASSUMPTION-DEPENDENT only.
+
+============================================================
+7. REQUIRED V1.8 DELIVERABLES
+============================================================
+
+1. v1.8_full_report.md
+2. v1.8_evidence_reconciliation.md
+3. v1.8_eqe_digitization_audit.md
+4. v1.8_eqe_provenance.csv
+5. v1.8_device_genealogy.csv
+6. v1.8_measurement_schema.json
+7. v1.8_validation_gate.json
+8. updated reproducibility/hash manifest
+9. tests proving:
+   - no unsupported EQE rescaling
+   - no unsupported device merging
+   - no silent historical-number changes
+10. concise CHANGELOG from V1.7
+
+============================================================
+8. SCIENTIFIC NON-NEGOTIABLES
+============================================================
+
+- Never overwrite raw evidence.
+- Never silently change historical numbers.
+- Never call a digitized curve raw measured data.
+- Never treat scenario spread as a confidence interval.
+- Never infer serial pairing without a source.
+- Never treat 1-R as absorption without full optical closure.
+- Never fit unknown optical/electrical losses into arbitrary parameters and call them measurements.
+- Never promote a model because it gives a higher PCE.
+- Never run a new APMT comparison while the baseline gate is closed.
+- Every numerical claim gets provenance.
+- Keep experimental, literature-derived, digitized, model-fit, assumed, scenario, and DATA_REQUIRED values separate.
+- Software completeness is not experimental completeness.
+
+============================================================
+9. PHYSICAL EXPERIMENT ROADMAP
+============================================================
+
+LITERATURE / SOURCE RECONCILIATION
+        ↓
+SAME-DEVICE EXPERIMENTAL DATA
+        ↓
+VALIDATED CONVENTIONAL DIGITAL TWIN
+        ↓
+APMT MODEL UNDER CONSTRAINED PARAMETERS
+        ↓
+EXPERIMENTAL DESIGN
+        ↓
+MATCHED CONTROL + APMT DEVICES
+        ↓
+IDENTICAL CHARACTERIZATION
+        ↓
+REPLICATE DEVICES
+        ↓
+STATISTICAL / UNCERTAINTY ANALYSIS
+        ↓
+ATTRIBUTABLE ΔJsc / ΔVoc / ΔFF / ΔPCE
+
+Do not jump directly to a full outdoor panel.
+A first physical experiment should be a controlled device/cell comparison, not a futuristic panel build.
+
+For eventual physical testing, preserve where possible:
+- matched materials/processes
+- same substrate/bottom-cell conditions
+- same illumination/spectrum
+- same temperature
+- same measurement protocol
+- multiple devices per group
+- raw-data retention
+- device IDs and genealogy
+- independent characterization
+- differential control-vs-APMT analysis
+
+============================================================
+10. SOFTWARE / REPOSITORY PRACTICE
+============================================================
+
+- Continue from the existing repository state.
+- Do not regenerate the whole project blindly.
+- Do not create massive uncontrolled artifact explosions.
+- Every meaningful milestone should be committed.
+- Raw data immutable; processed data separate.
+- Maintain hashes/manifests.
+- Use deterministic tests and synthetic known-answer data.
+- Preserve historical outputs exactly and label them correctly.
+- Do not rely on workspace-only state.
+- If Arena/Claude/Gemini or another coding environment is used, inspect existing architecture first and checkpoint changes.
+
+============================================================
+11. IMPORTANT FILES
+============================================================
+
+Primary project reports:
+- v17_full_report.md
+- v16_full_report.md
+- v15_full_report.md
+
+Current V1.8 prompt:
+- APMT_V1.8_EVIDENCE_RECOVERY_MASTER_PROMPT.txt
+
+V1.7 reproducibility artifacts mentioned in the report:
+- v17_reproducibility_manifest.json
+- v17_dataset_hashes.csv
+- v17_environment_info.json
+- v17_dependency_versions.txt
+- v17_configuration_hash.txt
+- v17_random_seeds.json
+- v17_device_genealogy.csv
+- v17_device_genealogy.json
+- v17_provenance_graph.json
+- results/v16_changelog.md
+
+============================================================
+12. WHAT THE NEW CHAT MUST DO FIRST
+============================================================
+
+Do NOT behave as if this is a brand-new project.
+
+First:
+1. Recognize this is APMT.
+2. Internalize V1.1–V1.7 history and the current V1.7 gate.
+3. Treat V1.8 as the active task.
+4. Keep APMT comparison blocked.
+5. Begin with EQE/source-resolution work, not another PCE optimization.
+6. Inspect any attached repository/files before making claims.
+7. For new source research, distinguish fresh web evidence from existing project evidence.
+8. Do not declare a discrepancy resolved because one convenient source appears to fit.
+9. Preserve all provenance and uncertainty categories.
+10. Produce an actual V1.8 artifact/test/result in the first meaningful work cycle.
+
+============================================================
+13. SUCCESS CONDITION
+============================================================
+
+V1.8 succeeds if either:
+
+A) the 20.18 vs ~16.90–17.11 discrepancy is resolved with reproducible source evidence,
+
+OR
+
+B) the discrepancy remains unresolved, BUT every avoidable digitization/curve-selection/source-genealogy ambiguity is closed, and the exact remaining external measurements are specified.
+
+The V1.8 final report must explicitly state:
+- what was resolved
+- what was not resolved
+- what is source-reported
+- what is digitized
+- what is inferred
+- what remains DATA_REQUIRED
+- whether the baseline gate remains closed
+
+============================================================
+14. ONE-SENTENCE STATUS
+============================================================
+
+APMT currently has research-grade simulation/data infrastructure, but the conventional reference tandem is still DATA-LIMITED because of the unresolved HZB silicon EQE curve-vs-reported-value conflict, incomplete optical/electrical loss characterization, and incomplete serial-level device genealogy; therefore APMT performance comparison remains blocked and V1.8 is focused on resolving or rigorously bounding those evidence gaps.
+
+============================================================
+15. FINAL COMMAND TO THE NEW CHAT
+============================================================
+
+Continue APMT from V1.7 into V1.8.
+Do not restart the science.
+Do not erase historical results.
+Do not fabricate data.
+Do not weaken the baseline gate.
+Do not run a new APMT efficiency claim yet.
+
+Immediate objective:
+Resolve or rigorously bound the published HZB silicon EQE discrepancy, upgrade evidence provenance/device genealogy, and create the lab-ready measurement/validation framework needed to validate the conventional baseline before any APMT controlled comparison.
+
+Be brutally honest about what is measured, source-reported, digitized, fitted, inferred, hypothetical, scenario-derived, or missing.

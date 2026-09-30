@@ -1,0 +1,177 @@
+APMT V1.8 — EVIDENCE RECOVERY + EQE RESOLUTION MASTER PROMPT
+
+MISSION
+Advance APMT from V1.7 DATA-LIMITED toward a defensible conventional baseline. Do NOT run or report any new APMT efficiency comparison until the baseline gate is explicitly reopened by evidence. V1.8 is an evidence-recovery, digitization-audit, measurement-specification, and baseline-validation preparation release.
+
+STARTING STATE
+- SOFTWARE_STATUS: research-grade experimental-data-ready.
+- BASELINE_STATUS: DATA-LIMITED.
+- APMT_STATUS: BLOCKED_BY_BASELINE_VALIDATION.
+- Bottom-EQE conflict remains unresolved.
+- Complete-stack R/T/A and external electrical-loss measurements remain DATA_REQUIRED.
+- Conventional fit remains weak/non-identifiable with condition number ~1.216e6.
+- Preserve all V1.3–V1.7 historical results unchanged and clearly marked model-observed / assumption-dependent where applicable.
+
+IMPORTANT NEW EVIDENCE FOUND DURING V1.8 START
+Primary/author-version material was re-checked independently.
+
+1) Main article text for Fig. 4E explicitly states that the CERTIFIED tandem's AM1.5G-equivalent photogenerated currents were:
+   - perovskite Jph = 19.41 mA/cm²
+   - silicon Jph = 20.18 mA/cm²
+   and that the measured certified Jsc was 19.23 mA/cm².
+   Source: Al-Ashouri et al., Science 370, 1300–1309 (2020), DOI 10.1126/science.abd4016; accepted author-version copies.
+
+2) Figure S32 caption explicitly states:
+   "External quantum efficiencies of the certified champion device in this publication (measured in-house)"
+   and the figure labels identify:
+   - HZB Perovskite = 19.41
+   - HZB Si = 20.18
+   - cumulative HZB current = 39.59 mA/cm²
+   It compares that certified champion device with the Sahli fully-textured device.
+   Therefore, 20.18 is NOT merely an unattributed table value. It is explicitly presented as the reported silicon-subcell integrated photogenerated current for the certified champion context.
+
+3) Table S1 also contains a row:
+   Silicon Jph 20.18, Perovskite Jph 19.41, mismatch 0.77 mA/cm².
+   Do NOT assume that every Table S1 row is the certified device, because the table contains multiple cells and lacks serial IDs. Use it as corroborating aggregate evidence only.
+
+CONSEQUENCE
+The wording of the V1.7 issue must be tightened:
+- Do NOT describe the 20.18 value simply as an ambiguous "reported bottom EQE".
+- Correct description:
+  "Author-reported silicon-subcell integrated Jph associated with the certified champion / HZB EQE context."
+- The unresolved conflict is more specifically:
+  "Graphical digitization of the published HZB silicon EQE curve(s) gives ~16.90–17.11 mA/cm², while the same primary source labels/reports 20.18 mA/cm² for HZB silicon."
+- Same-device pairing is now STRONGER at article/caption context level, although unique serial-level linkage is still unavailable.
+- This does NOT justify rescaling the curve to 20.18.
+
+V1.8 OBJECTIVES
+
+A. RE-AUDIT THE EQE DIGITIZATION PIPELINE
+1. Locate the exact highest-resolution copies of Fig. 4E and Fig. S32 available from:
+   - accepted author manuscript
+   - HZB / author repository mirrors
+   - TU Berlin DepositOnce
+   - other lawful primary-author copies
+2. Record source URL/identifier, file hash, page number, figure number, and image resolution.
+3. Extract/crop the actual HZB silicon EQE branch.
+4. Re-digitize independently using at least THREE methods where practical:
+   - manual point selection with axis calibration
+   - color/curve segmentation
+   - an independent alternative digitization path/tool
+5. Explicitly separate:
+   - HZB silicon EQE
+   - HZB perovskite EQE
+   - Sahli silicon EQE
+   - Sahli perovskite EQE
+   - dashed 1-R curves
+6. Verify that the selected HZB branch is the correct curve and not:
+   - Sahli curve
+   - 1-R curve
+   - overlap/occlusion artifact
+   - wrong branch near the crossover
+7. Recompute AM1.5G-integrated Jph using the same stated wavelength range and ASTM G173 global spectrum used by the project.
+8. Quantify digitization uncertainty from pixel resolution and branch ambiguity.
+9. Compare every independent result against 19.41 and 20.18.
+10. DO NOT apply any vertical scaling or offset unless a primary source explicitly documents it.
+
+B. SOURCE-REPORTING CONSISTENCY AUDIT
+1. Trace every occurrence of 19.41, 20.18, and 39.59 across:
+   - main article
+   - supplementary material
+   - thesis
+   - author/repository copies
+   - Table S1/S2/S3
+2. Build a provenance table with:
+   source, figure/table, device context, measurement modality, reported value, whether serial is available, and confidence.
+3. Determine whether the 20.18 value is:
+   - identical calculation reused across sources,
+   - an independently measured value,
+   - a figure annotation derived from another dataset,
+   - or still unresolved.
+4. Do not merge distinct devices just because the configuration is identical.
+
+C. SAME-DEVICE GENEALOGY UPGRADE
+Update the genealogy to distinguish:
+- SERIAL_LEVEL_LINKAGE
+- CERTIFIED_CHAMPION_CONTEXT_LINKAGE
+- CONFIGURATION_LEVEL_LINKAGE
+- UNKNOWN_PAIRING
+
+The certified JV + Fig. S31 + Fig. 4E/S32 should be represented as strong contextual same-champion evidence but still marked NO_SERIAL_ID when no serial is available.
+
+D. MEASUREMENT SPECIFICATION
+Create a machine-readable lab-ready measurement schema for the minimum future experiment:
+- top EQE and bottom EQE on the same physical device
+- full-stack R, T, A spectral closure
+- illuminated J-V
+- external dark-JV
+- Suns-Voc and/or Jsc-Voc
+- Rs/Rsh/contact/interconnection losses
+- absolute PL/EL where feasible
+- temperature-resolved J-V/MPP
+- absorber thickness
+Every record must support device ID, measurement ID, raw-file hash, instrument, calibration state, wavelength range, spectrum, temperature, uncertainty, operator/instrument metadata, processing history, and provenance.
+
+E. BASELINE GATE PREPARATION
+Build automated checks for:
+- EQE integral agreement
+- Jsc agreement
+- J-V curve agreement
+- scan-direction separation
+- R+T+A=1 closure
+- parameter identifiability
+- independent resistance constraints
+- device genealogy completeness
+- source/figure consistency
+
+Set a strict gate:
+PASS only when the conventional baseline is sufficiently constrained by independent evidence.
+FAIL/DEFER otherwise.
+
+F. NO NEW APMT CLAIMS
+Do not run APMT mechanisms for the purpose of generating an efficiency uplift in V1.8.
+Historical V1.3:
+- baseline ≈23.633%
+- full APMT ≈24.242%
+- Δ≈+0.610 percentage points
+must remain historical MODEL-OBSERVED / ASSUMPTION-DEPENDENT only.
+
+DELIVERABLES
+1. v1.8_full_report.md
+2. v1.8_evidence_reconciliation.md
+3. v1.8_eqe_digitization_audit.md
+4. v1.8_eqe_provenance.csv
+5. v1.8_device_genealogy.csv
+6. v1.8_measurement_schema.json
+7. v1.8_validation_gate.json
+8. updated reproducibility/hash manifest
+9. tests proving that no unsupported EQE rescaling or device merging occurs
+10. concise CHANGELOG describing exactly what changed from V1.7
+
+SCIENTIFIC RULES
+- Never overwrite raw evidence.
+- Never silently change historical numbers.
+- Never call a digitized curve "measured raw data".
+- Never turn scenario spread into a confidence interval.
+- Never infer serial pairing when the source does not provide it.
+- Never treat 1-R as absorption without evidence for transmission and other losses.
+- Never fit unknown optical/electrical losses into arbitrary parameters and call them measurements.
+- Never promote a model because it yields higher PCE.
+- Never report an APMT efficiency claim while the baseline gate is closed.
+- Every numerical claim must carry provenance.
+
+SUCCESS CONDITION
+V1.8 is successful if it either:
+(A) resolves the 20.18 vs ~16.90–17.11 discrepancy with reproducible source evidence, OR
+(B) proves the discrepancy remains unresolved but closes every avoidable digitization/curve-selection/source-genealogy ambiguity and leaves a precise list of the minimum external measurements still required.
+
+The final report must explicitly state:
+- what was resolved,
+- what was not resolved,
+- what is source-reported,
+- what is digitized,
+- what is inferred,
+- what remains DATA_REQUIRED,
+- and whether the baseline gate remains closed.
+
+Do not fabricate missing data. Do not weaken the gate to produce an APMT result.
