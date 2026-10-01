@@ -30,17 +30,25 @@
     "Threshold relaxations require a new GateThresholds object with recorded justification.",
     "NO_SERIAL_ID at context-level linkage is flagged, not failing, because primary sources lack serial IDs; serial-level data is DATA_REQUIRED for full closure."
   ],
-  "status_as_of_v1_8": {
-    "gate_state": "CLOSED (FAIL/DEFER)",
-    "reason": "Conventional baseline remains DATA-LIMITED: unresolved HZB silicon EQE curve-vs-reported-value conflict (20.18 source-reported vs 16.90-17.11 digitized), no full-stack R/T/A, no external Rs/Rsh, non-identifiable historical fit (condition number 1.216e6, boundary hits).",
+  "status_as_of_v1_8_cycle2_2026_10_01": {
+    "gate_state": "CLOSED (DEFER)",
+    "reason": "The HZB silicon EQE curve-vs-reported-value conflict is RESOLVED (3-method S32 digitization reproduces 19.41/20.18/39.59; see v1.8_eqe_digitization_audit.md A.6). The conventional baseline remains DATA-LIMITED: no full-stack R/T/A, no external Rs/Rsh, no serial-level linkage, non-identifiable baseline fit (historical V1.4 diagnostics: condition number 1.216e6, boundary hits).",
+    "checks_passing_on_current_evidence": [
+      "G1 (|19.23 - 19.41| = 0.18 <= 0.30; Jsc(EQE) = min(19.41, 20.18) = 19.41, both verified: Jsc certified per main text + Table S2; EQE integrals per 3-method S32 digitization)",
+      "G4 (scan directions 19.23 / 19.24 per Table S2 p50, primary-verified; |diff| = 0.01 <= 0.20)"
+    ],
     "checks_failing_on_current_evidence": [
-      "G1",
-      "G8"
+      "G8 (identifiability: no full-stack R/T/A + no external Rs/Rsh -> baseline parameters at bounds / non-identifiable; historical fit diagnostics 1.216e6 condition number fail the 1.0e4 threshold)"
     ],
     "checks_deferred_on_current_evidence": [
-      "G2 (partially evidable)",
-      "G5",
-      "G7"
+      "G2 (partially evidable: certified 19.23 vs in-house Jsc 19.35/19.36 are HANDOFF-QUOTED, curve files missing)",
+      "G3 (certified-JV RMSE 0.9170 <= 1.0 is HANDOFF-QUOTED, curve files missing)",
+      "G5 (full-stack R/T/A DATA_REQUIRED)",
+      "G7 (external Rs/Rsh DATA_REQUIRED)"
+    ],
+    "notes_cycle2": [
+      "G1 flipped from FAIL (cycle 1, using the superseded 17.11 digitization) to PASS with the cycle-2 verified evidence. The gate remains CLOSED overall: PASS requires G5/G7/G8 evidence, which is DATA_REQUIRED.",
+      "G6 passes with NO_SERIAL_ID flags (context-level linkage is the maximum available from the primary source)."
     ],
     "reopen_requires": [
       "same-device machine-readable top/bottom EQE linked to certified JV device/context",

@@ -1,0 +1,140 @@
+{
+  "spectrum": {
+    "fingerprint": "59040a85966f9c13ad394443bbafa5eb654df6aca58338a7a763f341b53d0eb0",
+    "irradiance_300_1250": 858.673547825,
+    "jph100_300_1250": 48.68812030335145
+  },
+  "methods": {
+    "M2_native_color_seg": {
+      "perovskite_jph": 19.081749595729132,
+      "si_jph_visible_support": 18.70753897443815,
+      "si_hidden_leading_edge_bound": 0.3743212814413973,
+      "perovskite_points": 152,
+      "si_points": 162,
+      "onr_points": 247,
+      "onr_mean_pct_300_1200": 97.48607062473104,
+      "onr_jph_proxy": 44.798016276814565,
+      "si_shifts": {
+        "-25": 19.3835,
+        "-10": 18.9731,
+        "-5": 18.8445,
+        "0": 18.7075,
+        "5": 18.5592,
+        "10": 18.4038,
+        "25": 17.9791
+      },
+      "si_windows": {
+        "300-1100": 18.1308,
+        "300-1150": 18.5792,
+        "300-1200": 18.7075,
+        "300-1250": 18.7075,
+        "685-1250": 18.7075,
+        "717-1250": 18.7075,
+        "755-1200": 17.4995
+      },
+      "si_pixel_band": [
+        18.4446,
+        18.899
+      ],
+      "perov_pixel_band": [
+        18.4121,
+        19.745
+      ]
+    },
+    "M1_manual_zoom_read": {
+      "perovskite_jph": 19.073597028058632,
+      "si_jph_visible_support": 19.630575983710195,
+      "si_hidden_leading_edge_bound": 0.3743212814413973,
+      "perovskite_points": 24,
+      "si_points": 26,
+      "onr_points": 23,
+      "onr_mean_pct_300_1200": 91.28746253746253,
+      "onr_jph_proxy": 43.088451327504416,
+      "si_shifts": {
+        "-25": 20.3267,
+        "-10": 19.9101,
+        "-5": 19.7706,
+        "0": 19.6306,
+        "5": 19.4877,
+        "10": 19.3401,
+        "25": 18.9127
+      },
+      "si_windows": {
+        "300-1100": 19.0669,
+        "300-1150": 19.4954,
+        "300-1200": 19.6306,
+        "300-1250": 19.6306,
+        "685-1250": 19.6306,
+        "717-1250": 19.2932,
+        "755-1200": 17.4652
+      },
+      "si_pixel_band": [
+        19.4033,
+        19.8444
+      ],
+      "perov_pixel_band": [
+        18.3974,
+        19.7443
+      ]
+    },
+    "M3_900dpi_rerender_seg": {
+      "perovskite_jph": 19.130763750864052,
+      "si_jph_visible_support": 18.760700679986915,
+      "si_hidden_leading_edge_bound": 0.3743212814413973,
+      "perovskite_points": 303,
+      "si_points": 314,
+      "onr_points": 5,
+      "onr_mean_pct_300_1200": 4.8949526843003985,
+      "onr_jph_proxy": 0.019320443260340294,
+      "si_shifts": {
+        "-25": 19.4433,
+        "-10": 19.0297,
+        "-5": 18.9039,
+        "0": 18.7607,
+        "5": 18.6109,
+        "10": 18.4547,
+        "25": 18.0269
+      },
+      "si_windows": {
+        "300-1100": 18.1528,
+        "300-1150": 18.6149,
+        "300-1200": 18.7607,
+        "300-1250": 18.7607,
+        "685-1250": 18.7607,
+        "717-1250": 18.7607,
+        "755-1200": 17.5527
+      },
+      "si_pixel_band": [
+        18.4974,
+        18.9557
+      ],
+      "perov_pixel_band": [
+        18.4702,
+        19.789
+      ]
+    }
+  },
+  "labels": {
+    "perovskite": 19.41,
+    "silicon": 20.18,
+    "sum": 39.59,
+    "one_r": 2.57
+  },
+  "historical": {
+    "fig4e_V1.6_si": 16.9019365812,
+    "s32_V1.4_si": 17.110498
+  },
+  "reflection_check": {
+    "jph100_300_1200": 46.4562,
+    "M2_native_color_seg": 1.6582,
+    "M1_manual_zoom_read": 3.3745,
+    "M3_900dpi_rerender_seg": 46.4369
+  },
+  "v16_reproduction": {
+    "full_visible_300_1250": 18.707539,
+    "plateau_755_to_1100": 16.922821,
+    "plateau_763_to_1100": 16.554546,
+    "handoff_V1.6": 16.9019365812,
+    "note": "V1.6 value equals the integral of the same drawn Si curve starting at the flat plateau (~755 nm; sigmoid rise in the crossover omitted) and truncated at ~1100 nm (NIR tail omitted): 16.9228 vs 16.9019, d = 0.021 (0.12%)."
+  }
+}

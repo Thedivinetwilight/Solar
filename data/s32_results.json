@@ -1,0 +1,109 @@
+{
+  "figure": "Fig. S32 (p55 of accepted manuscript, printed p54)",
+  "source_raster": "data/figures/s32_native_stitched.jpg (613x471 @144 dpi, 8 native JPEG strips)",
+  "calibration": {
+    "x": "col = -109.0 + 0.5845*nm (max resid 0.2 px = 0.34 nm)",
+    "y": "row = 414.4 - 4.0229*EQE% (max resid 2.1 px = 0.52%)"
+  },
+  "crossing_nm": {
+    "hzb": 733.5,
+    "sahli": 743.0
+  },
+  "labels": {
+    "hzb_perovskite": 19.41,
+    "hzb_si": 20.18,
+    "sahli_perovskite": 20.1,
+    "sahli_si": 20.3,
+    "sahli_cumulative": 40.4,
+    "hzb_cumulative": 39.59
+  },
+  "spectrum": {
+    "jph100_280_5000": 68.9829
+  },
+  "methods": {
+    "hzb_M1": {
+      "perovskite_jph": 19.4301,
+      "si_jph": 20.1846,
+      "sum_jph": 39.6146,
+      "perov_range_nm": [
+        306.2,
+        906.8
+      ],
+      "si_range_nm": [
+        491.0,
+        1195.9
+      ],
+      "perov_max_pct": 92.57,
+      "si_max_pct": 97.04,
+      "n_perov_pts": 352,
+      "n_si_pts": 413,
+      "n_onr_pts": 77,
+      "onr_fit_rms_pct": 0.86,
+      "onr_jph_300_1200": 42.2229,
+      "reflection_loss_proxy_300_1200": 4.2333
+    },
+    "hzb_M2": {
+      "perovskite_jph": 19.5654,
+      "si_jph": 20.1857,
+      "sum_jph": 39.7511,
+      "perov_range_nm": [
+        306.2,
+        1053.9
+      ],
+      "si_range_nm": [
+        491.0,
+        1195.9
+      ],
+      "perov_max_pct": 92.54,
+      "si_max_pct": 97.01,
+      "n_perov_pts": 434,
+      "n_si_pts": 380,
+      "n_onr_pts": 162,
+      "onr_fit_rms_pct": 0.64,
+      "onr_jph_300_1200": 44.1192,
+      "reflection_loss_proxy_300_1200": 2.337
+    },
+    "hzb_M3": {
+      "perovskite_jph": 19.321,
+      "si_jph": 20.1073,
+      "sum_jph": 39.4282,
+      "perov_range_nm": [
+        305.0,
+        788.0
+      ],
+      "si_range_nm": [
+        490.0,
+        1196.0
+      ],
+      "perov_max_pct": 92.7,
+      "si_max_pct": 97.0,
+      "n_perov_pts": 36,
+      "n_si_pts": 72,
+      "n_onr_pts": 30,
+      "onr_fit_rms_pct": null,
+      "onr_jph_300_1200": 43.7867,
+      "reflection_loss_proxy_300_1200": 2.6695
+    },
+    "sahli_M1": {
+      "perovskite_jph": 19.6044,
+      "si_jph": 19.4531,
+      "sum_jph": 39.0575,
+      "perov_range_nm": [
+        376.4,
+        792.1
+      ],
+      "si_range_nm": [
+        491.0,
+        1151.4
+      ],
+      "perov_max_pct": 93.44,
+      "si_max_pct": 98.54,
+      "n_perov_pts": 187,
+      "n_si_pts": 364,
+      "n_onr_pts": 232,
+      "onr_fit_rms_pct": 0.52,
+      "onr_jph_300_1200": 45.1158,
+      "reflection_loss_proxy_300_1200": 1.3404
+    }
+  }
+}

@@ -49,3 +49,23 @@ provenance) and are flagged accordingly.
 Figure images (Fig. 4E, Fig. S32) + SI text: **PENDING user commit to this repo**
 (intake path: commit under uploads/ or any path; I pull via git, hash, and
 proceed with the 3-method re-digitization per v1.8_eqe_digitization_audit.md §A.4).
+
+## Cycle 2 intake (2026-10-01)
+
+### Files now present that were MISSING-VERIFIED on 2026-09-30
+
+| file | sha256 | lines | notes |
+|---|---|---|---|
+| v16_full_report.md | 2569597553fde0adf7b49a66abd6c0a5c66b7c03842ff5aa2beb629dae41f2d8 | 225 | Arrived in the repo working tree (user commit path). Supersedes its MISSING-VERIFIED entry above. Historical V1.6 report; read-only evidence. |
+| v17_full_report.md | 3a5b04b0ca71f9ef45d87c4cb4989bdaccc4c1c1ad56f95ee2a931e669ef5b22 | 134 | Same. Historical V1.7 report; read-only evidence. |
+
+Still missing (unchanged): all other files listed in the 2026-09-30
+MISSING-VERIFIED block (v15 report, v16/v17 manifest/dataset/genealogy files,
+V1.4–V1.6 digitized curve files + calibration metadata, thesis PDF).
+
+### Primary source acquisition log — cycle 2 additions
+
+| source | id | access | notes |
+|---|---|---|---|
+| Accepted author version **incl. full embedded SI** (69 pp; main text pp1–25 + SI pp26–69, Figs S1–S43, Tables S1–S3) | AA2020-ACCEPTED-TUB-69PP | **COMMITTED to repo 2026-10-01** (user git commit): `data/sources/al_ashouri_accepted_manuscript.pdf`, sha256 0984f7e4b351a92d9bdbae8dd3bed25faaaf4335a3da821a6d633de1b3b3b3bc | Same TU Berlin DepositOnce work (DOI 10.14279/depositonce-15127), CC BY. PDF metadata: PDFsam Basic v4.1.4 + SAMBox 2.1.16, 2022-02-14 (reassembled scan). Figure S32 raster extracted from p55 (data/figures/s32_native_stitched.jpg); Fig. 4E raster from main text. SI text (S32 caption, Tables S1–S3) read from this file — publisher SI access no longer required. |
+| PhD thesis (32.69 MB, 281 pp) | AA2020-THESIS-ABSENT | still MISSING-VERIFIED (repo) | Held locally by the user; exceeds the 25 MB web-UI upload cap; user commits via git when ready. Optional cross-check only (S32 already primary-verified from the 69-pp manuscript). |
