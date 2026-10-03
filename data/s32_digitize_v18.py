@@ -70,6 +70,19 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 IMG = "data/figures/s32_native_stitched.jpg"
 PDF = "data/sources/al_ashouri_accepted_manuscript.pdf"
 
+
+class SourceUnavailable(RuntimeError):
+    """A required raster source is not present in the working tree.
+
+    The 69-page accepted manuscript PDF is deliberately NOT committed (it is a
+    large external source; ``.gitignore`` excludes ``data/sources/*.pdf`` and a
+    sha256 is recorded in manifests/ instead). Methods that re-render a figure
+    page from the PDF therefore cannot run in a clean checkout, and they must
+    say so loudly instead of silently degrading. The deterministic, non-mutating
+    call is ``main(write=False, require_pdf=False)``; writing the historical
+    artifacts is the explicit command ``python data/s32_digitize_v18.py --write``.
+    """
+
 def col2nm(c):  return (c + 109.0) / 0.5845
 def nm2col(nm): return -109.0 + 0.5845 * nm
 def row2eqe(r): return (414.4 - r) / 4.0229
@@ -338,7 +351,50 @@ M3_ONR = [
     (1150, 70.5), (1170, 67.5), (1190, 65.5), (1210, 64.5),
 ]
 
-def main():
+def _run_m2(run):
+    """M2: 200-dpi re-render of the Fig. S32 rect from the manuscript PDF.
+
+    Requires the external manuscript PDF (not committed). The mask/scale numbers
+    are frozen from V1.8 cycle 2 and are deliberately not re-tuned here.
+    """
+    page = pymupdf.open(PDF)[54]
+    rect = pymupdf.Rect(144.4, 388.5, 451.0, 623.0)
+    S = 200 / 72.0
+    sc = S / 2.0
+    pix = page.get_pixmap(matrix=pymupdf.Matrix(S, S), clip=rect,
+                          colorspace=pymupdf.csRGB)
+    big = np.frombuffer(pix.samples, np.uint8).reshape(pix.height, pix.width,
+                                                       pix.n)[:, :, :3].astype(int)
+    R, G, B = big[..., 0], big[..., 1], big[..., 2]
+    dr2 = ((R >= 90) & (R <= 200) & (R - B >= 45) & (R - G >= 35) & (G <= 110))
+    dr2[:, :int(sc * 68)] = False
+    dr2[:, int(sc * 593):] = False
+    dr2[:int(sc * 13), :] = False
+    dr2[int(sc * 414):, :] = False
+    dr2[int(sc * 196):int(sc * 237), int(sc * 118):int(sc * 316)] = False
+    dr2[int(sc * 196):int(sc * 237), int(sc * 363):int(sc * 497)] = False
+    return run(dr2, sc, "hzb")
+
+
+def main(write: bool = False, require_pdf: bool = True):
+    """Re-run the Fig. S32 digitization.
+
+    Parameters
+    ----------
+    write : bool
+        When True, overwrite ``data/s32_results.json`` and
+        ``data/s32_curves.npz`` (the historical artifacts). Default False so
+        that any programmatic call -- in particular the test suite -- is
+        non-mutating. Generate the artifacts explicitly with::
+
+            python data/s32_digitize_v18.py --write
+
+    require_pdf : bool
+        When True (default), the M2 200-dpi re-render requires the manuscript
+        PDF and raises :class:`SourceUnavailable` if it is absent. When False,
+        M2 is recorded as ``SOURCE_MISSING`` and every other method is still
+        computed exactly as before.
+    """
     from apmt.spectrum import load_astm_g173_am15g_global
     from apmt.eqe_integrate import integrate_jph
     spec = load_astm_g173_am15g_global()
@@ -384,23 +440,16 @@ def main():
     r = run(yl, 1.0, "sahli", 45.0);         results["sahli_M1"] = r
 
     # M2: 200 dpi re-render (same PDF rect), HZB color
-    page = pymupdf.open(PDF)[54]
-    rect = pymupdf.Rect(144.4, 388.5, 451.0, 623.0)
-    S = 200 / 72.0
-    sc = S / 2.0
-    pix = page.get_pixmap(matrix=pymupdf.Matrix(S, S), clip=rect,
-                          colorspace=pymupdf.csRGB)
-    big = np.frombuffer(pix.samples, np.uint8).reshape(pix.height, pix.width, pix.n)[:, :, :3].astype(int)
-    R, G, B = big[..., 0], big[..., 1], big[..., 2]
-    dr2 = ((R >= 90) & (R <= 200) & (R - B >= 45) & (R - G >= 35) & (G <= 110))
-    dr2[:, :int(sc * 68)] = False
-    dr2[:, int(sc * 593):] = False
-    dr2[:int(sc * 13), :] = False
-    dr2[int(sc * 414):, :] = False
-    dr2[int(sc * 196):int(sc * 237), int(sc * 118):int(sc * 316)] = False
-    dr2[int(sc * 196):int(sc * 237), int(sc * 363):int(sc * 497)] = False
-    r = run(dr2, sc, "hzb");      results["hzb_M2"] = r
-
+    if not os.path.exists(PDF):
+        if require_pdf:
+            raise SourceUnavailable(
+                f"{PDF!r} is not present in this checkout (large external "
+                f"source, excluded by .gitignore). M2 cannot be reproduced. "
+                f"Call main(write=False, require_pdf=False) to skip only M2.")
+        print(f"{PDF!r} missing -> hzb_M2 NOT VERIFIED (source unavailable)")
+        results["hzb_M2"] = None
+    else:
+        results["hzb_M2"] = _run_m2(run)
     # M3 manual
     a3p = np.array([x for x, _ in M3_PEROV]); e3p = np.array([y for _, y in M3_PEROV])
     a3s = np.array([x for x, _ in M3_SI]);     e3s = np.array([y for _, y in M3_SI])
@@ -424,7 +473,13 @@ def main():
         "spectrum": {"jph100_280_5000": round(spec.jph_100eqe(280, 5000), 4)},
     }
     for tag in ("hzb_M1", "hzb_M2", "hzb_M3", "sahli_M1"):
-        r = results[tag]
+        r = results.get(tag)
+        if r is None:
+            out.setdefault("methods", {})[tag] = {
+                "status": "SOURCE_MISSING",
+                "reason": f"{PDF!r} not present in this checkout; M2 200-dpi "
+                          f"re-render NOT VERIFIED in this run"}
+            continue
         d = {
             "perovskite_jph": round(r["iph"], 4),
             "si_jph": round(r["ishp"], 4),
@@ -446,14 +501,20 @@ def main():
         d["reflection_loss_proxy_300_1200"] = round(spec.jph_100eqe(300, 1200) - io, 4)
         out.setdefault("methods", {})[tag] = d
     print(json.dumps(out, indent=2))
-    with open("data/s32_results.json", "w") as f:
-        json.dump(out, f, indent=2)
-    np.savez("data/s32_curves.npz",
-             **{f"{k}_{s}": v for k, r in results.items() for s, v in
-                [("perov_nm", r["nm_perov"]), ("perov_eqe", r["eqe_perov"]),
-                 ("si_nm", r["nm_si"]), ("si_eqe", r["eqe_si"]),
-                 ("onr_nm", r["nm_onr"]), ("onr_eqe", r["eqe_onr"])]})
+    if write:
+        # Explicit artifact generation only (audit item B): the default path is
+        # non-mutating so tests and analyses never overwrite committed history.
+        with open("data/s32_results.json", "w") as f:
+            json.dump(out, f, indent=2)
+        np.savez("data/s32_curves.npz",
+                 **{f"{k}_{s}": v for k, r in results.items() if r is not None
+                    for s, v in
+                    [("perov_nm", r["nm_perov"]), ("perov_eqe", r["eqe_perov"]),
+                     ("si_nm", r["nm_si"]), ("si_eqe", r["eqe_si"]),
+                     ("onr_nm", r["nm_onr"]), ("onr_eqe", r["eqe_onr"])]})
     return out
 
 if __name__ == "__main__":
-    main()
+    # artifacts are regenerated ONLY with the explicit flag:
+    #     python data/s32_digitize_v18.py --write
+    main(write="--write" in sys.argv, require_pdf="--allow-missing-source" not in sys.argv)

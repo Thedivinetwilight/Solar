@@ -102,19 +102,62 @@ def test_s32_results_consistent_with_saved_curves():
         assert abs(s - m[tag]["sum_jph"]) < 1.1e-4  # independent 4-dec rounding
 
 
-def test_s32_deterministic_rerun_matches_json():
-    """A full deterministic re-run of the digitization reproduces the
-    stored results exactly (4-decimal rounding)."""
+def _load_s32_module():
     spec = importlib.util.spec_from_file_location("s32_digitize_v18", S32_SCRIPT)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
-    out = mod.main()
+    return mod
+
+
+def test_s32_deterministic_rerun_matches_json():
+    """A deterministic re-run reproduces the stored results exactly.
+
+    Audit item B (V1.9): the re-run is NON-MUTATING (``write=False``); the
+    historical JSON/NPZ are regenerated only by the explicit command
+    ``python data/s32_digitize_v18.py --write``. Methods whose source raster is
+    absent are reported as SOURCE_MISSING and are NOT silently skipped: the
+    test asserts that gap explicitly, and ``test_s32_m2_requires_source_pdf``
+    below covers M2 whenever the manuscript PDF is present.
+    """
+    mod = _load_s32_module()
+    out = mod.main(write=False, require_pdf=False)
     with open(S32_JSON) as f:
         stored = json.load(f)
+    verified = []
     for tag in ("hzb_M1", "hzb_M2", "hzb_M3", "sahli_M1"):
+        got = out["methods"][tag]
+        if got.get("status") == "SOURCE_MISSING":
+            assert tag == "hzb_M2"
+            assert stored["methods"][tag]["perovskite_jph"] > 0  # history intact
+            continue
         for k in ("perovskite_jph", "si_jph", "sum_jph",
                   "onr_jph_300_1200", "reflection_loss_proxy_300_1200"):
-            assert out["methods"][tag][k] == stored["methods"][tag][k], (tag, k)
+            assert got[k] == stored["methods"][tag][k], (tag, k)
+        verified.append(tag)
+    # M1/M3/sahli are raster- or coordinate-based and MUST always verify
+    assert set(verified) == {"hzb_M1", "hzb_M3", "sahli_M1"}
+
+
+def test_s32_m2_requires_source_pdf():
+    """M2 (200-dpi PDF re-render) is verified only where the source exists.
+
+    The 69-page manuscript PDF is an external source that is deliberately not
+    committed (``.gitignore``: ``data/sources/*.pdf``). Where it is absent this
+    test SKIPS with an explicit reason -- it must never report a pass it did
+    not achieve.
+    """
+    pdf = os.path.join(HERE, "data", "sources", "al_ashouri_accepted_manuscript.pdf")
+    if not os.path.exists(pdf):
+        pytest.skip("data/sources/al_ashouri_accepted_manuscript.pdf absent "
+                    "(external source, not committed) -> hzb_M2 200-dpi "
+                    "re-render NOT VERIFIED in this checkout")
+    mod = _load_s32_module()
+    out = mod.main(write=False, require_pdf=True)
+    with open(S32_JSON) as f:
+        stored = json.load(f)
+    for k in ("perovskite_jph", "si_jph", "sum_jph", "onr_jph_300_1200",
+              "reflection_loss_proxy_300_1200"):
+        assert out["methods"]["hzb_M2"][k] == stored["methods"]["hzb_M2"][k], k
 
 
 def test_eqe4e_reconstruction_in_reported_bands():
