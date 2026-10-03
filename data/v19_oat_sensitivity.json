@@ -1,0 +1,65 @@
+{
+  "baseline": {
+    "coupling_converged": true,
+    "coupling_iterations": 2,
+    "current_matching_ratio": 1.259201,
+    "detail": {
+      "j0_bottom": {
+        "detail": {
+          "doping_cm3": 1e+16,
+          "lifetime_s": 0.005,
+          "srh_route": "slab SRH+surface model",
+          "srv_cm_s": 10.0,
+          "thickness_cm": 0.026000000000000002
+        },
+        "ere": 0.0001,
+        "ideality_srh": 1.05,
+        "j0_radiative_ma_cm2": 3.2051360626266233e-06,
+        "j0_srh_ma_cm2": 1.3747877248848574e-10,
+        "j0_total_ma_cm2": 3.205273541399112e-06,
+        "radiative_fraction": 0.999957108567892,
+        "temperature_k": 298.15
+      },
+      "j0_top": {
+        "detail": {
+          "doping_cm3": 1e+17,
+          "lifetime_s": 1.0000000000000002e-06,
+          "srh_route": "slab SRH+surface model",
+          "srv_cm_s": 1000.0,
+          "thickness_cm": 4.9999999999999996e-05
+        },
+        "ere": 0.02,
+        "ideality_srh": 1.45,
+        "j0_radiative_ma_cm2": 2.3684116615932474e-18,
+        "j0_srh_ma_cm2": 5.85719941837487e-20,
+        "j0_total_ma_cm2": 2.426983655776996e-18,
+        "radiative_fraction": 0.975866341726559,
+        "temperature_k": 298.15
+      },
+      "luminescent_coupling_beta": 0.0,
+      "optics_model_form": "IQE-M1",
+      "photon_recycling_gain_top": 1.0,
+      "rs_ohm_cm2": 1.5,
+      "rsh_ohm_cm2": 3000.0
+    },
+    "ff": 0.856723,
+    "j_bottom_sc": 19.802963,
+    "j_top_sc": 15.726614,
+    "jmp_ma_cm2": 14.960296,
+    "jsc_ma_cm2": 15.614099,
+    "model_form": "IQE-M1",
+    "pce_pct": 20.241172,
+    "temperature_k": 298.15,
+    "v_bottom_at_mpp": 0.365559,
+    "v_top_at_mpp": 1.035877,
+    "vmp_v": 1.352993,
+    "voc_v": 1.513136
+  },
+  "baseline_pce_pct": 20.2412,
+  "category": "OAT-SCREENING (local, one-factor-at-a-time; NOT global sensitivity)",
+  "n_solves": 102,
+  "params": {
+    "absorption_heat_fraction": {
+      "category": "MODEL-ASSUMED",
+      "default": 1.0,
+      "inert": 

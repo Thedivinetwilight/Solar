@@ -178,24 +178,38 @@ def solve_tandem(device: TandemDevice, temperature_k: float,
     beta = float(device.mechanism_flags.get("luminescent_coupling_top_to_bottom", 0.0))
     top = device.top
     bottom = device.bottom
+
+    # --- self-consistent luminescent coupling ------------------------------
+    # The coupling current delivered to the bottom cell is beta times the *top
+    # cell's own radiative recombination current at its own bias*, which for a
+    # series tandem is a function of the common current density J:
+    #
+    #     I_rad_top(J) = j0_rad_top * expm1(V_top(J) / kT)
+    #
+    # Because the top-cell voltage V_top(J) does not depend on the bottom cell,
+    # this is closed-form per bias point: there is NO outer fixed-point loop and
+    # no circularity. (V1.9 bug fix: the previous implementation updated the
+    # top-cell reference voltage with the *tandem* Voc -- the sum of both
+    # subcell voltages -- so exp(V/kT) exploded and beta > 0 produced
+    # non-physical results, e.g. PCE = 141.9 % at beta = 0.3.)
+    kT_top = K_B_EV_K * temperature_k
+    j0_rad_top = top.j0_rad_effective()
+
+    def coupling_current_at(v_top_v: float) -> float:
+        if beta == 0.0:
+            return 0.0
+        x = min(max(v_top_v / kT_top, -700.0), 700.0)
+        return float(beta * j0_rad_top * np.expm1(x))
+
+    def bottom_with_coupling(v_top_v: float) -> SubcellModel:
+        return _with_coupling(bottom, 1.0, coupling_current_at(v_top_v))
+
     converged = True
     n_iter = 0
 
-    # --- self-consistent luminescent coupling ------------------------------
-    v_top_ref = open_circuit_voltage(top, temperature_k)
-    for n_iter in range(1, max_iter + 1):
-        i_rad_top = _radiative_recombination_current(top, v_top_ref, temperature_k)
-        bottom = _with_coupling(bottom, beta, i_rad_top)
-        v_new = _tandem_voc(top, bottom, temperature_k, device.rs_ohm_cm2)
-        if abs(v_new - v_top_ref) <= coupling_tol:
-            v_top_ref = v_new
-            break
-        v_top_ref = v_new
-    else:
-        converged = False
-
     j_limit = min(float(current_at_voltage(top, 0.0, temperature_k)),
-                  float(current_at_voltage(bottom, 0.0, temperature_k)))
+                  float(current_at_voltage(bottom, 0.0, temperature_k))
+                  + coupling_current_at(open_circuit_voltage(top, temperature_k)))
     if j_limit <= 0:
         raise RuntimeError("tandem short-circuit current is non-positive")
 
@@ -203,12 +217,12 @@ def solve_tandem(device: TandemDevice, temperature_k: float,
     V = np.empty_like(J)
     for i, j in enumerate(J):
         vt = voltage_at_current(top, float(j), temperature_k)
-        vb = voltage_at_current(bottom, float(j), temperature_k)
+        vb = voltage_at_current(bottom_with_coupling(vt), float(j), temperature_k)
         V[i] = vt + vb - float(j) * device.rs_ohm_cm2 / 1000.0
 
     J_term = J.copy()
     if np.isfinite(device.rsh_ohm_cm2):
-        J_term = J - V / device.rsh_ohm_cm2 * 1000.0 / 1000.0
+        J_term = J - V / device.rsh_ohm_cm2 * 1000.0
 
     # monotone ascending V along decreasing J -> invert for the MPP search
     order = np.argsort(V)
@@ -221,8 +235,7 @@ def solve_tandem(device: TandemDevice, temperature_k: float,
     # Voc: terminal voltage where the terminal current vanishes
     idx = np.where(J_sorted <= 0.0)[0]
     if idx.size:
-        voc = float(np.interp(0.0, J_sorted[idx][::-1] * -1.0,
-                              V_sorted[idx][::-1] * -1.0)) if False else float(V_sorted[idx[0]])
+        voc = float(V_sorted[idx[0]])
     else:
         voc = v_max
 
@@ -240,7 +253,9 @@ def solve_tandem(device: TandemDevice, temperature_k: float,
         temperature_k=temperature_k, jsc_ma_cm2=jsc, voc_v=voc, ff=ff, pce_pct=pmax,
         vmp_v=vmp, jmp_ma_cm2=jmp,
         v_top_at_mpp=float(voltage_at_current(top, jmp, temperature_k)),
-        v_bottom_at_mpp=float(voltage_at_current(bottom, jmp, temperature_k)),
+        v_bottom_at_mpp=float(voltage_at_current(
+            bottom_with_coupling(voltage_at_current(top, jmp, temperature_k)),
+            jmp, temperature_k)),
         j_top_sc=j_top_sc, j_bottom_sc=j_bot_sc,
         current_matching_ratio=j_bot_sc / j_top_sc if j_top_sc > 0 else float("nan"),
         coupling_converged=converged, coupling_iterations=n_iter,
@@ -279,12 +294,63 @@ def _tandem_voc(top: SubcellModel, bottom: SubcellModel, temperature_k: float,
             + open_circuit_voltage(bottom, temperature_k))
 
 
+SUN_IRRADIANCE_MW_CM2 = 100.0     # 1000 W/m^2 = 100 mW/cm^2 at one sun
+
+
+def junction_temperature(ps: ParamSet) -> dict:
+    """Junction temperature from a documented, deliberately conservative balance.
+
+    ``T_junction = T_ambient + R_th_eff * G * f_heat`` with
+
+    * ``G = irradiance_suns * 100 mW/cm^2`` (one sun reference irradiance),
+    * ``f_heat = absorption_heat_fraction`` (registered; default 1.0),
+    * ``R_th_eff = thermal_resistance_k_cm2_w * (1 - thermal_management_gain)``.
+
+    Closure assumptions (stated explicitly, all *conservative* for efficiency):
+
+    * all incident power becomes heat -- the electrically extracted (≈20 %) and
+      reflected (≈5 %) fractions are neglected, so the modelled temperature rise
+      is an OVERESTIMATE of roughly 25 %;
+    * the thermal resistance is areal and temperature-independent;
+    * no radiative cooling, no wind, no package thermal mass.
+
+    A refined energy-balance closure (heat = absorbed minus extracted, with the
+    optics' own reflection loss) is planned for the V1.9-C simulation engine; the
+    present closure is intentionally the pessimistic one so that it cannot be
+    accused of flattering the model.
+    """
+    r_th = ps["thermal_resistance_k_cm2_w"] * (1.0 - ps["thermal_management_gain"])
+    heat_flux = ps["irradiance_suns"] * SUN_IRRADIANCE_MW_CM2 * ps["absorption_heat_fraction"]
+    dt = r_th * heat_flux
+    charge = {"delta_t_k": float(dt), "r_th_effective_k_cm2_w": float(r_th),
+              "heat_flux_mw_cm2": float(heat_flux),
+              "closure": "conservative: all incident power treated as heat",
+              "category": "MODEL-ASSUMED-CLOSURE"}
+    return charge
+
+
 def evaluate_tandem(ps: ParamSet, model_form: str = "IQE-M1",
                     temperature_k: Optional[float] = None,
                     spectrum: Optional[Spectrum] = None,
-                    optics: Optional[TandemOpticsResult] = None) -> TandemResult:
-    """Convenience: build and solve the tandem from a ParamSet."""
+                    optics: Optional[TandemOpticsResult] = None,
+                    self_heating: bool = True) -> TandemResult:
+    """Build and solve the tandem from a ParamSet.
+
+    When ``temperature_k`` is given explicitly, that temperature is used as the
+    *ambient* and self-heating is added on top (set ``self_heating=False`` for a
+    fixed-temperature diagnostic). The resulting junction temperature and its
+    thermal-closure assumptions are recorded in ``result.detail``.
+    """
     sp = spectrum or reference()
-    T = float(temperature_k if temperature_k is not None else ps["temperature_k"])
+    t_ambient = float(temperature_k if temperature_k is not None else ps["temperature_k"])
+    charge = junction_temperature(ps)
+    dt = charge["delta_t_k"] if self_heating else 0.0
+    T = t_ambient + dt
     device = build_tandem(ps, model_form, T, sp, optics)
-    return solve_tandem(device, T)
+    res = solve_tandem(device, T)
+    detail = dict(res.detail)
+    detail["thermal"] = {
+        "ambient_k": t_ambient, "junction_k": T, "delta_t_k": float(dt),
+        "self_heating": bool(self_heating), **charge,
+    }
+    return TandemResult(**{**res.__dict__, "detail": detail})

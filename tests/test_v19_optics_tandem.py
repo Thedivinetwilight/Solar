@@ -40,15 +40,34 @@ def test_tco_absorption_shape_is_physical():
 
 
 def test_tandem_baseline_regression_pin():
-    """Registry-default twin, model form IQE-M1 (pin of 2026-10-03)."""
+    """Registry-default twin, model form IQE-M1.
+
+    Pin history (documented moves are allowed, silent ones are not):
+
+    * 2026-10-03 V1.9-B1  PCE 20.8508  (before the shunt unit fix)
+    * 2026-10-03 V1.9-B3  PCE 20.2412  (shunt conversion bug fixed: the Rsh
+      term applied no mA<->A conversion and was numerically inert; the fix
+      *lowers* the efficiency, so it is not a PCE-chasing change)
+    """
     o = evaluate_tandem(ParamSet.defaults())
-    assert o.pce_pct == pytest.approx(20.8508, abs=0.002)
-    assert o.jsc_ma_cm2 == pytest.approx(15.7266, abs=0.002)
-    assert o.voc_v == pytest.approx(1.5150, abs=0.001)
-    assert o.ff == pytest.approx(0.8750, abs=0.002)
+    assert o.pce_pct == pytest.approx(20.2412, abs=0.002)
+    assert o.jsc_ma_cm2 == pytest.approx(15.6141, abs=0.002)
+    assert o.voc_v == pytest.approx(1.5131, abs=0.001)
+    assert o.ff == pytest.approx(0.8567, abs=0.002)
     assert o.j_top_sc == pytest.approx(15.7266, abs=0.002)
     assert o.j_bottom_sc == pytest.approx(19.8030, abs=0.002)
     assert o.coupling_converged
+
+
+def test_rsh_is_not_inert_in_the_tandem_solve():
+    """Regression guard for the V1.9 shunt unit bug: a smaller shunt
+    resistance must measurably lower the efficiency, otherwise the parameter
+    is silently inactive and any 'unlearnable parameter' claim is false."""
+    ps = ParamSet.defaults()
+    strong = evaluate_tandem(ps.with_mapping({"rsh_ohm_cm2": 600.0}))
+    weak = evaluate_tandem(ps.with_mapping({"rsh_ohm_cm2": 6000.0}))
+    assert strong.pce_pct < weak.pce_pct - 1.0
+    assert strong.ff < weak.ff
 
 
 def test_tandem_model_form_sensitivity_is_reported_not_hidden():

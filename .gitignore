@@ -1,11 +1,12 @@
-# Large raw source PDFs stay on disk (outside git); hashes in manifests/hashes
+# Large raw source PDFs stay on disk (outside git); hashes recorded in manifests/
 data/sources/*.pdf
 __pycache__/
 *.pyc
 .pytest_cache/
 .venv/
+*.egg-info/
+build/
+dist/
 
 # V1.9 additions
-.venv/
-data/sources/*.pdf
 *.nbi

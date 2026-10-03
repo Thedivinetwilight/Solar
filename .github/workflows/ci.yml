@@ -1,0 +1,46 @@
+name: apmt-ci
+
+# Audit item I (V1.9): CI is strictly non-mutating. It never regenerates or
+# overwrites committed artifacts; the last step fails the build if a tracked
+# file under data/ or manifests/ changed during the run.
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install (compatible pins, no PDF extra)
+        run: |
+          python -m pip install --upgrade pip
+          pip install "numpy>=2.0,<3.0" "scipy>=1.11,<2.0" "pvlib>=0.10,<1.0" \
+                      "pillow>=10.0" "pytest>=8.0"
+
+      - name: Unit / regression / invariant / gate / audit tests
+        run: python -m pytest -q
+
+      - name: CI checks (pins, determinism, provenance, gate, artifact consistency)
+        run: python tools/ci_checks.py
+
+      - name: Verify that no tracked artifact was mutated by the test run
+        run: |
+          if ! git diff --quiet -- data manifests; then
+            echo "::error::CI mutated tracked data/manifests"
+            git diff --stat -- data manifests
+            exit 1
+          fi

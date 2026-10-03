@@ -1,0 +1,238 @@
+{
+  "generated_by": "tools/v19_calibrate_twin.py",
+  "category": "MODEL-FIT-TO-DIGITIZED-EVIDENCE",
+  "fit_target": {
+    "device": "hzb_M1 (certified champion of Al-Ashouri 2020, Fig. S32)",
+    "provenance": "DIGITIZED from the committed raster data/figures/s32_native_stitched.jpg",
+    "n_points": 765,
+    "label_jph_ma_cm2": [
+      19.41,
+      20.18
+    ]
+  },
+  "calibration": {
+    "category": "MODEL-FIT-TO-DIGITIZED-EVIDENCE",
+    "model_form": "IQE-M1",
+    "parameter_names": [
+      "arc_thickness_nm",
+      "parasitic_layer_thickness_nm",
+      "perovskite_thickness_nm",
+      "collection_efficiency_top",
+      "collection_efficiency_bottom",
+      "silicon_light_trapping"
+    ],
+    "initial_values": [
+      100.0,
+      15.0,
+      500.0,
+      0.98,
+      0.98,
+      1.0
+    ],
+    "fitted_values": [
+      115.84633703607861,
+      59.99999999999999,
+      837.689005860806,
+      0.9999999999999999,
+      0.961978403747601,
+      10.231266914035476
+    ],
+    "lower_bounds": [
+      0.0,
+      0.0,
+      150.0,
+      0.6,
+      0.6,
+      1.0
+    ],
+    "upper_bounds": [
+      220.0,
+      60.0,
+      1500.0,
+      1.0,
+      1.0,
+      30.0
+    ],
+    "objective": 0.9596516407732121,
+    "n_data_points": 765,
+    "rmse_top": 0.04823776091793778,
+    "rmse_bottom": 0.05161416190680105,
+    "jph_top_ma_cm2": 18.62498889878992,
+    "jph_bottom_ma_cm2": 20.64341855975747,
+    "converged": true,
+    "message": "`ftol` termination condition is satisfied.",
+    "target_fingerprint": "7df0049cd0529d1c80ea23ebb4704341e83e83f1c8456bcae9f45d3d0974f0bf",
+    "identifiability": {
+      "condition_number": 1300.7618678718713,
+      "boundary_hits": 2,
+      "n_parameters": 6,
+      "n_data_points": 765,
+      "degrees_of_freedom": 759,
+      "singular_values": [
+        13.670987858235044,
+        12.032843570556976,
+        0.1748607608827018,
+        0.057551161615726404,
+        0.017470830355658922,
+        0.010509985106345134
+      ],
+      "flat_directions": 1,
+      "parameter_names": [
+        "arc_thickness_nm",
+        "parasitic_layer_thickness_nm",
+        "perovskite_thickness_nm",
+        "collection_efficiency_top",
+        "collection_efficiency_bottom",
+        "silicon_light_trapping"
+      ],
+      "max_parameter_correlation": 0.29804960128559205,
+      "unidentifiable_pairs": [],
+      "objective_value": 0.9596516407732121,
+      "residual_rmse": 0.05008885283665476,
+      "category": "MODEL-FIT (fitted to DIGITIZED evidence)",
+      "notes": "Jacobian from central differences of the residual vector; correlations from the pseudo-inverse of J^T J; profile likelihood scans each parameter on a 21-point grid with the others fixed"
+    },
+    "residuals": {
+      "rmse_top_pct_points": 4.8237760917937775,
+      "rmse_bottom_pct_points": 5.161416190680105,
+      "max_abs_top": 0.19199090970353294,
+      "max_abs_bottom": 0.18003172690977604,
+      "bias_top": -0.019724081279250183,
+      "bias_bottom": 0.005865038245251938
+    }
+  },
+  "tandem_at_fitted_parameters": {
+    "temperature_k": 328.15,
+    "jsc_ma_cm2": 18.547966,
+    "voc_v": 1.372692,
+    "ff": 0.825583,
+    "pce_pct": 21.019875,
+    "vmp_v": 1.18649,
+    "jmp_ma_cm2": 17.716022,
+    "v_top_at_mpp": 0.964392,
+    "v_bottom_at_mpp": 0.26952,
+    "j_top_sc": 18.624989,
+    "j_bottom_sc": 20.643419,
+    "current_matching_ratio": 1.108372,
+    "coupling_converged": true,
+    "coupling_iterations": 0,
+    "model_form": "IQE-M1",
+    "detail": {
+      "rs_ohm_cm2": 1.5,
+      "rsh_ohm_cm2": 3000.0,
+      "j0_top": {
+        "j0_radiative_ma_cm2": 1.4035852360692397e-15,
+        "j0_srh_ma_cm2": 4.481889523440889e-15,
+        "j0_total_ma_cm2": 5.885474759510129e-15,
+        "radiative_fraction": 0.23848292506925398,
+        "ere": 0.02,
+        "ideality_srh": 1.45,
+        "temperature_k": 328.15,
+        "detail": {
+          "srh_route": "override (fitted/source-constrained value)",
+          "doping_cm3": 1e+16,
+          "srv_cm_s": 10.0,
+          "thickness_cm": null,
+          "lifetime_s": null
+        }
+      },
+      "j0_bottom": {
+        "j0_radiative_ma_cm2": 0.00021194434502165633,
+        "j0_srh_ma_cm2": 7.393117420421321e-07,
+        "j0_total_ma_cm2": 0.00021268365676369846,
+        "radiative_fraction": 0.9965238902072125,
+        "ere": 0.0001,
+        "ideality_srh": 1.05,
+        "temperature_k": 328.15,
+        "detail": {
+          "srh_route": "override (fitted/source-constrained value)",
+          "doping_cm3": 1e+16,
+          "srv_cm_s": 10.0,
+          "thickness_cm": null,
+          "lifetime_s": null
+        }
+      },
+      "luminescent_coupling_beta": 0.0,
+      "photon_recycling_gain_top": 1.0,
+      "optics_model_form": "IQE-M1",
+      "thermal": {
+        "ambient_k": 298.15,
+        "junction_k": 328.15,
+        "delta_t_k": 30.0,
+        "self_heating": true,
+        "r_th_effective_k_cm2_w": 0.3,
+        "heat_flux_mw_cm2": 100.0,
+        "closure": "conservative: all incident power treated as heat",
+        "category": "MODEL-ASSUMED-CLOSURE"
+      }
+    }
+  },
+  "tandem_at_registry_defaults": {
+    "temperature_k": 328.15,
+    "jsc_ma_cm2": 15.641516,
+    "voc_v": 1.366523,
+    "ff": 0.837828,
+    "pce_pct": 17.908159,
+    "vmp_v": 1.199257,
+    "jmp_ma_cm2": 14.932711,
+    "v_top_at_mpp": 0.960564,
+    "v_bottom_at_mpp": 0.283915,
+    "j_top_sc": 15.726614,
+    "j_bottom_sc": 19.802963,
+    "current_matching_ratio": 1.259201,
+    "coupling_converged": true,
+    "coupling_iterations": 0,
+    "model_form": "IQE-M1",
+    "detail": {
+      "rs_ohm_cm2": 1.5,
+      "rsh_ohm_cm2": 3000.0,
+      "j0_top": {
+        "j0_radiative_ma_cm2": 1.4035852360692397e-15,
+        "j0_srh_ma_cm2": 4.3422393806170575e-15,
+        "j0_total_ma_cm2": 5.745824616686297e-15,
+        "radiative_fraction": 0.24427916438540864,
+        "ere": 0.02,
+        "ideality_srh": 1.45,
+        "temperature_k": 328.15,
+        "detail": {
+          "srh_route": "override (fitted/source-constrained value)",
+          "doping_cm3": 1e+16,
+          "srv_cm_s": 10.0,
+          "thickness_cm": null,
+          "lifetime_s": null
+        }
+      },
+      "j0_bottom": {
+        "j0_radiative_ma_cm2": 0.00021194434502165633,
+        "j0_srh_ma_cm2": 7.393117420421321e-07,
+        "j0_total_ma_cm2": 0.00021268365676369846,
+        "radiative_fraction": 0.9965238902072125,
+        "ere": 0.0001,
+        "ideality_srh": 1.05,
+        "temperature_k": 328.15,
+        "detail": {
+          "srh_route": "override (fitted/source-constrained value)",
+          "doping_cm3": 1e+16,
+          "srv_cm_s": 10.0,
+          "thickness_cm": null,
+          "lifetime_s": null
+        }
+      },
+      "luminescent_coupling_beta": 0.0,
+      "photon_recycling_gain_top": 1.0,
+      "optics_model_form": "IQE-M1",
+      "thermal": {
+        "ambient_k": 298.15,
+        "junction_k": 328.15,
+        "delta_t_k": 30.0,
+        "self_heating": true,
+        "r_th_effective_k_cm2_w": 0.3,
+        "heat_flux_mw_cm2": 100.0,
+        "closure": "conservative: all incident power treated as heat",
+        "category": "MODEL-ASSUMED-CLOSURE"
+      }
+    }
+  },
+  "n_registry_parameters": 40,
+  "wall_clock_s": 0.6963906288146973
+}

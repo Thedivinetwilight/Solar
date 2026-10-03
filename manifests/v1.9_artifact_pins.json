@@ -1,0 +1,26 @@
+{
+  "files": {
+    "data/eqe4e_curves.npz": {
+      "bytes": 25296,
+      "sha256": "539321177a9f58a2fee6f55b8d1fbfa5fcf83e2ab06e474b10f799a11de38b7a"
+    },
+    "data/eqe4e_results.json": {
+      "bytes": 3752,
+      "sha256": "8bd528428b21ce50457a7b7145470486cfecdd211fdefdc33ad3cf8cc7634064"
+    },
+    "data/s32_curves.npz": {
+      "bytes": 50102,
+      "sha256": "79900308e8c72a3a9dee4aa53ae4387689ffb9b6dfd0797e44c37079e1171266"
+    },
+    "data/s32_results.json": {
+      "bytes": 2532,
+      "sha256": "0653972bf62f13c38b3c705e682e525d1c2c82cce2b77db8dba61d95971d1667"
+    },
+    "data/v19_calibration.json": {
+      "bytes": 11908,
+      "sha256": "d4772acdd8d4479545d0324b80677302574ca0c02336f5fb0e908ab46cce997a"
+    }
+  },
+  "generated_by": "tools/v19_calibrate_twin.py",
+  "note": "sha256 pins of committed artifacts; CI verifies these"
+}
