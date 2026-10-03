@@ -14,7 +14,7 @@ testable — not to manufacture a headline efficiency.
 | Gate implementation consistency | V1.9 audit: the stored `"CLOSED (DEFER)"` state was **not** what the V1.8 evaluator returns on the same evidence (`FAIL`). Both are now reported side by side by `audit_v18_gate_consistency()`. |
 | APMT status | `BLOCKED_BY_BASELINE_VALIDATION` — mechanisms may only be studied as `PRE-GATE / MODEL-OBSERVED / EXPLORATORY` |
 | Baseline data status | `DATA-LIMITED` (no full-stack R/T/A, no external Rs/Rsh, no serial-level device linkage) |
-| Digital twin | running; registry-default tandem PCE 20.85 % (IQE-M1), calibrated-to-digitized-EQE variant 24.41 % — the calibrated variant is a **fit to digitized figure data**, not a validated result |
+| Digital twin | running; registry-default tandem PCE **17.91 %** at one sun with the conservative self-heating closure (20.24 % fixed-temperature diagnostic), and 21.02 % for the twin calibrated to digitized EQE — the calibrated variant is a **fit to digitized figure data**, not a validated result |
 
 ## What is here
 

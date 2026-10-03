@@ -1,0 +1,466 @@
+{
+  "dose_response": {
+    "A": [
+      {
+        "ff": 0.8378284264749267,
+        "jsc": 15.641516161425129,
+        "junction_t_k": 328.15,
+        "parameter": "silicon_light_trapping",
+        "pce_pct": 17.908159192560003,
+        "value": 1.0,
+        "voc": 1.3665231936268538
+      },
+      {
+        "ff": 0.8415018935860582,
+        "jsc": 15.639084003321768,
+        "junction_t_k": 328.15,
+        "parameter": "silicon_light_trapping",
+        "pce_pct": 18.006250622682558,
+        "value": 2.0,
+        "voc": 1.3682229809603443
+      },
+      {
+        "ff": 0.8430415104594692,
+        "jsc": 15.638043972360519,
+        "junction_t_k": 328.15,
+        "parameter": "silicon_light_trapping",
+        "pce_pct": 18.048987271386608,
+        "value": 3.0,
+        "voc": 1.3690567452692346
+      },
+      {
+        "ff": 0.8439447503795403,
+        "jsc": 15.637423706680622,
+        "junction_t_k": 328.15,
+        "parameter": "silicon_light_trapping",
+        "pce_pct": 18.074601922842323,
+        "value": 4.0,
+        "voc": 1.3695866725107606
+      },
+      {
+        "ff": 0.8445594684040064,
+        "jsc": 15.636996780825575,
+        "junction_t_k": 328.15,
+        "parameter": "silicon_light_trapping",
+        "pce_pct": 18.092283841626013,
+        "value": 5.0,
+        "voc": 1.369966068518583
+      }
+    ],
+    "B": [
+      {
+        "ff": 0.8378284264749267,
+        "jsc": 15.641516161425129,
+        "junction_t_k": 328.15,
+        "parameter": "photon_recycling_gain_top",
+        "pce_pct": 17.908159192560003,
+        "value": 0.0,
+        "voc": 1.3665231936268538
+      },
+      {
+        "ff": 0.8391196731091514,
+        "jsc": 15.641516161425129,
+        "junction_t_k": 328.15,
+        "parameter": "photon_recycling_gain_top",
+        "pce_pct": 18.19301225517095,
+        "value": 1.0,
+        "voc": 1.3861232912552077
+      },
+      {
+        "ff": 0.8398703107005682,
+        "jsc": 15.641516161425129,
+        "junction_t_k": 328.15,
+        "parameter": "photon_recycling_gain_top",
+        "pce_pct": 18.35990308036687,
+        "value": 2.0,
+        "voc": 1.3975884641103382
+      },
+      {
+        "ff": 0.8411156674846014,
+        "jsc": 15.641516161425129,
+        "junction_t_k": 328.15,
+        "parameter": "photon_recycling_gain_top",
+        "pce_pct": 18.644983894650665,
+        "value": 5.0,
+        "voc": 1.4171879211972478
+      },
+      {
+        "ff": 0.8422779630341505,
+        "jsc": 15.641516161425129,
+        "junction_t_k": 328.15,
+        "parameter": "photon_recycling_gain_top",
+        "pce_pct": 18.894040764047695,
+        "value": 10.0,
+        "voc": 1.4341367410629275
+      },
+      {
+        "ff": 0.8433595616817992,
+        "jsc": 15.641516161425129,
+        "junction_t_k": 328.15,
+        "parameter": "photon_recycling_gain_top",
+        "pce_pct": 19.15947503822471,
+        "value": 20.0,
+        "voc": 1.4524192105670375
+      }
+    ],
+    "C": [
+      {
+        "ff": 0.8378284264749267,
+        "jsc": 15.641516161425129,
+        "junction_t_k": 328.15,
+        "parameter": "thermal_management_gain",
+        "pce_pct": 17.908159192560003,
+        "value": 0.0,
+        "voc": 1.3665231936268538
+      },
+      {
+        "ff": 0.8418705847594532,
+        "jsc": 15.63600974877606,
+        "junction_t_k": 322.15,
+        "parameter": "thermal_management_gain",
+        "pce_pct": 18.375796970025387,
+        "value": 0.2,
+        "voc": 1.3959662413405065
+      },
+      {
+        "ff": 0.8458642133798359,
+        "jsc": 15.630517545144192,
+        "junction_t_k": 316.15,
+        "parameter": "thermal_management_gain",
+        "pce_pct": 18.842650803259748,
+        "value": 0.4,
+        "voc": 1.4251743262081127
+      },
+      {
+        "ff": 0.8496041817148386,
+        "jsc": 15.625035927935668,
+        "junction_t_k": 310.15,
+        "parameter": "thermal_management_gain",
+        "pce_pct": 19.30902605007382,
+        "value": 0.6,
+        "voc": 1.454530065029553
+      },
+      {
+        "ff": 0.8532428917732888,
+        "jsc": 15.619563383526703,
+        "junction_t_k": 304.15,
+        "parameter": "thermal_management_gain",
+        "pce_pct": 19.775690700935222,
+        "value": 0.8,
+        "voc": 1.4838503115135278
+      },
+      {
+        "ff": 0.8567234058344271,
+        "jsc": 15.614099364261012,
+        "junction_t_k": 298.15,
+        "parameter": "thermal_management_gain",
+        "pce_pct": 20.24117198733338,
+        "value": 1.0,
+        "voc": 1.5131364188972443
+      }
+    ]
+  },
+  "factorial": {
+    "baseline_pce_pct": 17.908159192560003,
+    "best_pce_pct": 20.59650135428181,
+    "cells": {
+      "---": {
+        "active": {
+          "A": false,
+          "B": false,
+          "C": false
+        },
+        "ff": 0.8378284264749267,
+        "jsc": 15.641516161425129,
+        "junction_t_k": 328.15,
+        "mechanism_parameter_values": {
+          "collection_efficiency_bottom": 0.98,
+          "collection_efficiency_top": 0.98,
+          "photon_recycling_gain_top": 0.0,
+          "silicon_light_trapping": 1.0,
+          "thermal_management_gain": 0.0
+        },
+        "mismatch_ratio": 1.259200687489171,
+        "pce_pct": 17.908159192560003,
+        "voc": 1.3665231936268538
+      },
+      "--C": {
+        "active": {
+          "A": false,
+          "B": false,
+          "C": true
+        },
+        "ff": 0.8496041817148386,
+        "jsc": 15.625035927935668,
+        "junction_t_k": 310.15,
+        "mechanism_parameter_values": {
+          "collection_efficiency_bottom": 0.98,
+          "collection_efficiency_top": 0.98,
+          "photon_recycling_gain_top": 0.0,
+          "silicon_light_trapping": 1.0,
+          "thermal_management_gain": 0.6
+        },
+        "mismatch_ratio": 1.259200687489171,
+        "pce_pct": 19.30902605007382,
+        "voc": 1.454530065029553
+      },
+      "-B-": {
+        "active": {
+          "A": false,
+          "B": true,
+          "C": false
+        },
+        "ff": 0.8411156674846014,
+        "jsc": 15.641516161425129,
+        "junction_t_k": 328.15,
+        "mechanism_parameter_values": {
+          "collection_efficiency_bottom": 0.98,
+          "collection_efficiency_top": 0.98,
+          "photon_recycling_gain_top": 5.0,
+          "silicon_light_trapping": 1.0,
+          "thermal_management_gain": 0.0
+        },
+        "mismatch_ratio": 1.259200687489171,
+        "pce_pct": 18.644983894650665,
+        "voc": 1.4171879211972478
+      },
+      "-BC": {
+        "active": {
+          "A": false,
+          "B": true,
+          "C": true
+        },
+        "ff": 0.8521764686824533,
+        "jsc": 15.625035927935668,
+        "junction_t_k": 310.15,
+        "mechanism_parameter_values": {
+          "collection_efficiency_bottom": 0.98,
+          "collection_efficiency_top": 0.98,
+          "photon_recycling_gain_top": 5.0,
+          "silicon_light_trapping": 1.0,
+          "thermal_management_gain": 0.6
+        },
+        "mismatch_ratio": 1.259200687489171,
+        "pce_pct": 20.00512518622046,
+        "voc": 1.5024177679227257
+      },
+      "A--": {
+        "active": {
+          "A": true,
+          "B": false,
+          "C": false
+        },
+        "ff": 0.8440653902268083,
+        "jsc": 15.958345042429258,
+        "junction_t_k": 328.15,
+        "mechanism_parameter_values": {
+          "collection_efficiency_bottom": 1.0,
+          "collection_efficiency_top": 1.0,
+          "photon_recycling_gain_top": 0.0,
+          "silicon_light_trapping": 4.0,
+          "thermal_management_gain": 0.0
+        },
+        "mismatch_ratio": 1.400112793291619,
+        "pce_pct": 18.46338967541723,
+        "voc": 1.3707160303436812
+      },
+      "A-C": {
+        "active": {
+          "A": true,
+          "B": false,
+          "C": true
+        },
+        "ff": 0.855244356820619,
+        "jsc": 15.942099969755583,
+        "junction_t_k": 310.15,
+        "mechanism_parameter_values": {
+          "collection_efficiency_bottom": 1.0,
+          "collection_efficiency_top": 1.0,
+          "photon_recycling_gain_top": 0.0,
+          "silicon_light_trapping": 4.0,
+          "thermal_management_gain": 0.6
+        },
+        "mismatch_ratio": 1.400112793291619,
+        "pce_pct": 19.885708774207757,
+        "voc": 1.4584962924383718
+      },
+      "AB-": {
+        "active": {
+          "A": true,
+          "B": true,
+          "C": false
+        },
+        "ff": 0.8471744805093046,
+        "jsc": 15.958345042429258,
+        "junction_t_k": 328.15,
+        "mechanism_parameter_values": {
+          "collection_efficiency_bottom": 1.0,
+          "collection_efficiency_top": 1.0,
+          "photon_recycling_gain_top": 5.0,
+          "silicon_light_trapping": 4.0,
+          "thermal_management_gain": 0.0
+        },
+        "mismatch_ratio": 1.400112793291619,
+        "pce_pct": 19.21636114352329,
+        "voc": 1.4213807719857534
+      },
+      "ABC": {
+        "active": {
+          "A": true,
+          "B": true,
+          "C": true
+        },
+        "ff": 0.8576542294833293,
+        "jsc": 15.942099969755583,
+        "junction_t_k": 310.15,
+        "mechanism_parameter_values": {
+          "collection_efficiency_bottom": 1.0,
+          "collection_efficiency_top": 1.0,
+          "photon_recycling_gain_top": 5.0,
+          "silicon_light_trapping": 4.0,
+          "thermal_management_gain": 0.6
+        },
+        "mismatch_ratio": 1.400112793291619,
+        "pce_pct": 20.59650135428181,
+        "voc": 1.5063839955964473
+      }
+    },
+    "design": "2^3 factorial over mechanism toggles",
+    "direct_effects_pp": {
+      "A": 0.5552304828572261,
+      "B": 0.7368247020906615,
+      "C": 1.4008668575138152
+    },
+    "interaction_effects_pp": {
+      "AxB": 0.01614676601539955,
+      "AxC": 0.021452241276712414,
+      "BxC": -0.04072556594401888
+    },
+    "label": "PRE-GATE / MODEL-OBSERVED / EXPLORATORY",
+    "mechanisms": {
+      "A": {
+        "label": "optical management",
+        "off": {
+          "collection_efficiency_bottom": 0.98,
+          "collection_efficiency_top": 0.98,
+          "silicon_light_trapping": 1.0
+        },
+        "on": {
+          "collection_efficiency_bottom": 1.0,
+          "collection_efficiency_top": 1.0,
+          "silicon_light_trapping": 4.0
+        },
+        "rationale": "front/rear optical management: perfect carrier collection from absorbed photons and a textured rear (path enhancement 4). Exploratory design intent, not a measured device state."
+      },
+      "B": {
+        "label": "photon recycling",
+        "off": {
+          "photon_recycling_gain_top": 0.0
+        },
+        "on": {
+          "photon_recycling_gain_top": 5.0
+        },
+        "rationale": "top-cell radiative-lifetime enhancement by re-absorption of emitted photons (5x, mid-range of the registered 0-20 scale)."
+      },
+      "C": {
+        "label": "thermal management",
+        "off": {
+          "thermal_management_gain": 0.0
+        },
+        "on": {
+          "thermal_management_gain": 0.6
+        },
+        "rationale": "60 % reduction of the junction-to-mount areal thermal resistance relative to the registered 0.3 K cm^2 / mW default."
+      }
+    },
+    "model_form": "IQE-M1",
+    "n_solves": 8,
+    "three_way_interaction_pp": -0.0014533220879897613
+  },
+  "generated_by": "tools/v19_mechanism_campaign.py",
+  "label": "PRE-GATE / MODEL-OBSERVED / EXPLORATORY",
+  "lhs": {
+    "label": "PRE-GATE / MODEL-OBSERVED / EXPLORATORY",
+    "method": "Latin hypercube over registered ranges + Spearman rank correlation + standardised-regression-coefficient OLS surrogate with bootstrap CI. NOT a variance decomposition; Sobol indices are deferred to V1.9-D.",
+    "model_form": "IQE-M1",
+    "n_samples": 96,
+    "n_solves": 96,
+    "parameters": [
+      "perovskite_eg_ev",
+      "perovskite_thickness_nm",
+      "arc_thickness_nm",
+      "silicon_light_trapping",
+      "photon_recycling_gain_top",
+      "thermal_management_gain",
+      "thermal_resistance_k_cm2_w",
+      "rsh_ohm_cm2",
+      "radiative_efficiency_top"
+    ],
+    "pce_max": 24.54866943093322,
+    "pce_mean": 15.224991603532033,
+    "pce_min": 0.0729758976059207,
+    "pce_std": 5.571982531757901,
+    "seed": 20261003,
+    "spearman_rho": {
+      "arc_thickness_nm": 0.14803309820944113,
+      "perovskite_eg_ev": 0.012967986977753662,
+      "perovskite_thickness_nm": 0.2139989148128052,
+      "photon_recycling_gain_top": 0.00035268583830710796,
+      "radiative_efficiency_top": 0.031958762886597936,
+      "rsh_ohm_cm2": 0.05324199674443841,
+      "silicon_light_trapping": -0.12544763971785133,
+      "thermal_management_gain": 0.5130629408572979,
+      "thermal_resistance_k_cm2_w": -0.4819994574064026
+    },
+    "src": {
+      "arc_thickness_nm": 0.05853413670108437,
+      "perovskite_eg_ev": 0.13778306694234796,
+      "perovskite_thickness_nm": 0.13111356456813422,
+      "photon_recycling_gain_top": 0.016808744906527513,
+      "radiative_efficiency_top": 0.010129448637654161,
+      "rsh_ohm_cm2": 0.02547218099771898,
+      "silicon_light_trapping": -0.12838903435564766,
+      "thermal_management_gain": 0.5063832021123525,
+      "thermal_resistance_k_cm2_w": -0.5178112312991042
+    },
+    "src_ci95": {
+      "arc_thickness_nm": [
+        -0.08624434573486803,
+        0.17295985371966965
+      ],
+      "perovskite_eg_ev": [
+        0.004410529908074051,
+        0.2775303876074044
+      ],
+      "perovskite_thickness_nm": [
+        -0.018774595619021377,
+        0.25658102009704503
+      ],
+      "photon_recycling_gain_top": [
+        -0.1449095813647073,
+        0.1660984671877263
+      ],
+      "radiative_efficiency_top": [
+        -0.12958137077698417,
+        0.15092855028525207
+      ],
+      "rsh_ohm_cm2": [
+        -0.12222469687204669,
+        0.15938634208374927
+      ],
+      "silicon_light_trapping": [
+        -0.267239434983511,
+        0.06432157099653735
+      ],
+      "thermal_management_gain": [
+        0.3499359778514968,
+        0.6528837282063357
+      ],
+      "thermal_resistance_k_cm2_w": [
+        -0.6783946165097164,
+        -0.36580751038646125
+      ]
+    },
+    "surrogate_r2": 0.5761868794676074
+  }
+}

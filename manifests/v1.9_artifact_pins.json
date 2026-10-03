@@ -17,8 +17,12 @@
       "sha256": "0653972bf62f13c38b3c705e682e525d1c2c82cce2b77db8dba61d95971d1667"
     },
     "data/v19_calibration.json": {
-      "bytes": 7206,
-      "sha256": "0e50e82787dee2aafc10d691fdcacb82e7d8b93cfb25eca701a45bc923fa8f1e"
+      "bytes": 7168,
+      "sha256": "6da5a9e3c275e9a4bd0e11679e32168bd37f5cd6eb4e95a834eb7e805ae8b392"
+    },
+    "data/v19_mechanism_campaign.json": {
+      "bytes": 14127,
+      "sha256": "4973baec87573f2363bd9916478288871e31259eab535bea589d701e0b89910d"
     },
     "data/v19_oat_sensitivity.json": {
       "bytes": 40552,

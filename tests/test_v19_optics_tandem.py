@@ -139,3 +139,40 @@ def test_invariants_fail_loudly():
              "absorbed_bottom": 12.0})])   # 39 vs 40 = 1 mA/cm2 leak
     ok = check_invariants([check_quantum_efficiency_bounds(np.array([0.0, 1.0]))])
     assert ok[0].passed
+
+
+# ---------------------------------------------------------------------------
+# V1.9-C campaign #1: sensitivity machinery (no physics pinned here; the
+# factorial algebra is verified against a synthetic evaluator so the test is
+# fast and independent of the tandem model)
+# ---------------------------------------------------------------------------
+def test_lhs_matrix_respects_registered_ranges_and_seed():
+    from apmt.params.registry import spec
+    from apmt.sensitivity.lhs import lhs_matrix
+    names = ("perovskite_eg_ev", "thermal_resistance_k_cm2_w", "rsh_ohm_cm2")
+    a = lhs_matrix(names, 64, seed=123)
+    b = lhs_matrix(names, 64, seed=123)
+    c = lhs_matrix(names, 64, seed=124)
+    assert np.allclose(a, b) and not np.allclose(a, c)
+    assert a.shape == (64, 3)
+    for j, name in enumerate(names):
+        s = spec(name)
+        assert np.all(a[:, j] >= s.low) and np.all(a[:, j] <= s.high)
+
+
+def test_factorial_effects_match_a_known_synthetic_response(monkeypatch):
+    """Interaction algebra: for PCE = a*A + b*B + c*A*B the recovered direct
+    effects must be a and b, and the 2-way interaction must be c."""
+    from apmt.sensitivity import factorial as fac
+
+    def fake(base, mechanisms, active, model_form="IQE-M1"):
+        A = 1.0 if active.get("A") else 0.0
+        B = 1.0 if active.get("B") else 0.0
+        return {"pce_pct": 10.0 + 1.5 * A + 0.5 * B + 0.25 * A * B}
+
+    monkeypatch.setattr(fac, "evaluate_configuration", fake)
+    mechs = fac.DEFAULT_MECHANISMS[:2]
+    out = fac.full_factorial(mechanisms=mechs)
+    assert out["direct_effects_pp"]["A"] == pytest.approx(1.5)
+    assert out["direct_effects_pp"]["B"] == pytest.approx(0.5)
+    assert out["interaction_effects_pp"]["AxB"] == pytest.approx(0.25)

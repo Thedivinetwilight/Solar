@@ -3,7 +3,7 @@
 **Cycle:** V1.9-A → V1.9-B (engineering hardening → model architecture)
 **Date:** 2026-10-03
 **Branch:** `arena/01a102e7-solar` · **Repository:** github.com/Thedivinetwilight/Solar
-**Commits this cycle:** `abece5f` (V1.9-A1) → `ffe54e0` (V1.9-B1) → `b35cf66` (V1.9-B2) → `7cafe30` (V1.9-B3) → `f77979c` (V1.9-A2) → `4f88ec4` (V1.9-B1: twin physics) → `c4bf52d` (V1.9-B4: self-heating, coupling, OAT, CLI) → `f2dea0a` (V1.9-B5: this report). Branch pushed to `origin/arena/01a102e7-solar`.
+**Commits this cycle:** `abece5f` (V1.9-A1) → `ffe54e0` (V1.9-B1) → `b35cf66` (V1.9-B2) → `7cafe30` (V1.9-B3) → `f77979c` (V1.9-A2) → `4f88ec4` (V1.9-B1: twin physics) → `c4bf52d` (V1.9-B4: self-heating, coupling, OAT, CLI) → `f2dea0a` (V1.9-B5: this report) → `a9091bd` (V1.9-B6: report refresh) → **V1.9-C1: mechanism campaign #1** (§6.9). Branch pushed to `origin/arena/01a102e7-solar`.
 **Base (V1.8 endpoint, untouched):** `b846e2e2f1380f253f876e1ef9606b731dd1ca3d`
 
 This is the single authoritative report for the cycle. Everything below is
@@ -180,6 +180,7 @@ the first OAT run).
 | Twin calibration (IQE-M1) | `tools/v19_calibrate_twin.py --write` | 0.7 s; §6.3 |
 | Twin calibration (IQE-M2) | `--model-form IQE-M2` | §6.4 |
 | OAT screening | `tools/v19_oat_scan.py --write` | 114 solves, 123 s; §6.5 |
+| Mechanism campaign #1 | `tools/v19_mechanism_campaign.py --write` | 2³ factorial + dose-response + 96-sample LHS; 124 s; §6.9 |
 
 **Benchmarks (2 vCPU sandbox):** optics solve 11 ms (IQE-M1) / 2 ms (IQE-M2);
 full tandem solve ≈ 1.12 s (dominated by the per-bias subcell inversions);
@@ -295,6 +296,86 @@ genuine identifiability result and an input to the VOI engine (§11).
   than the 500 nm registered default, which is a *fit to digitized data*, not
   evidence that the real device is thicker.
 
+### 6.9 Mechanism campaign #1 — factorial, dose-response, LHS screen
+
+`data/v19_mechanism_campaign.json` (label: **PRE-GATE / MODEL-OBSERVED /
+EXPLORATORY**). Mechanisms are modelled as registered-parameter toggles:
+A optical management (`collection_efficiency_top/bottom`, `silicon_light_trapping`),
+B photon recycling (`photon_recycling_gain_top`), C thermal management
+(`thermal_management_gain`).
+
+**2³ factorial (8 solves, baseline 17.9082 pp):**
+
+| Effect | Value (pp) |
+| --- | --- |
+| A direct | +0.555 |
+| B direct | +0.737 |
+| C direct | +1.401 |
+| A×B interaction | +0.016 |
+| A×C interaction | +0.022 |
+| B×C interaction | −0.041 |
+| A×B×C interaction | −0.002 |
+| all three ON | **+2.688** (20.5965 pp) |
+
+The mechanisms are **essentially additive in this model**: the largest
+interaction is 3 % of the largest direct effect. This is labelled
+**MODEL-FORM-FRAGILE**: the additivity is a property of the current
+parameterisation (the three mechanisms act on separable model terms), not an
+empirical finding. Coupled pathways that would break additivity — photon
+recycling feeding the luminescent-coupling channel, thermal shift of the
+absorption edge feeding the optical block — are not yet implemented, so an
+"APMT synergy" claim would be unsupported *and an "APMT has no synergy" claim
+would be equally unsupported*.
+
+**Dose–response (30 solves):**
+
+| Mechanism | Sweep | PCE range (pp) | Shape |
+| --- | --- | --- | --- |
+| A light trapping | 1 → 5 | 17.908 → 18.092 | saturating |
+| B recycling gain | 0 → 20 | 17.908 → 19.159 | sub-linear, saturating |
+| C thermal gain | 0 → 1 | 17.908 → 20.241 | linear in the gain |
+
+**LHS screen (96 solves, 124 s):** PCE mean 15.23, sd 5.57, min/max within the
+sampled envelope. Linear surrogate R² = **0.576** — i.e. a linear model explains
+only 58 % of the variation over the *full registered ranges*, which are wide
+(e.g. E_g 1.1–2.1 eV). Standardised regression coefficients (bootstrap 95 % CI):
+
+| Parameter | SRC | 95 % CI | Spearman ρ |
+| --- | --- | --- | --- |
+| `thermal_resistance_k_cm2_w` | −0.518 | [−0.678, −0.366] | −0.482 |
+| `thermal_management_gain` | +0.506 | [+0.350, +0.653] | +0.513 |
+| `perovskite_eg_ev` | +0.138 | [+0.004, +0.278] | +0.013 |
+| `perovskite_thickness_nm` | +0.131 | [−0.019, +0.257] | +0.214 |
+| `silicon_light_trapping` | −0.128 | [−0.267, +0.064] | −0.125 |
+| `arc_thickness_nm` | +0.059 | [−0.086, +0.173] | +0.148 |
+| `rsh_ohm_cm2` | +0.025 | [−0.122, +0.159] | +0.053 |
+| `photon_recycling_gain_top` | +0.017 | [−0.145, +0.166] | +0.000 |
+| `radiative_efficiency_top` | +0.010 | [−0.130, +0.151] | +0.032 |
+
+Only the thermal axis is a *robust* first-order driver in this screen. Two
+honesty notes:
+
+* the near-zero marginal SRC of photon recycling **contradicts** its clear
+  positive effect in the factorial (+0.737 pp) and dose-response (+1.25 pp). A
+  targeted check (6 LHS points, gain 0 → 20) gives +0.06 … +0.40 pp at every
+  non-degenerate point, so the marginal signal is real but small compared with
+  the variance injected by the thermal and bandgap axes. **LHS rank screening
+  over wide ranges cannot detect weak-but-real effects** — that is a limitation
+  of the screen, not evidence of no effect, and it is reported rather than
+  quietly dropped.
+* `perovskite_eg_ev` has SRC +0.138 but ρ = +0.013: the true response is
+  strongly non-monotone (it has an interior optimum), so the linear surrogate is
+  misleading for that parameter.
+
+**Registered-range audit finding.** The LHS envelope contains corners where the
+twin returns PCE ≈ 1 % at a junction temperature of ≈454 K
+(`thermal_resistance_k_cm2_w` × `irradiance_suns` extremes). A 200 K rise is not
+physically realisable for a glass-mounted cell, so the registered upper bound
+2.0 K·cm²/mW (classified EXPLORATORY) is **too wide to be physically meaningful
+at one sun**. The range is not silently narrowed here (that would be a silent
+change to a registered assumption); it is flagged for re-justification in
+V1.9-C, together with an explicit envelope flag on out-of-envelope samples.
+
 ### 6.7 Data-consistency finding (negative result)
 
 The digitized Fig. S32 EQE of the champion integrates to 19.4301 (top) +
@@ -355,7 +436,11 @@ undefined convergence status. Six of these are directly exercised by tests.
 ## 8. Reproducibility
 
 * Environment pins: numpy 2.4.6, scipy 1.17.1, pvlib 0.16.1, pytest 9.1.1, PyMuPDF 1.28.2 (recorded in `manifests/v1.8_reproducibility_manifest.json` and re-declared with bounds in `pyproject.toml`).
-* Artifact pins (`manifests/v1.9_artifact_pins.json`, 6 files) are verified in CI; `tools/ci_checks.py` re-runs the digitization deterministically and compares against the committed JSON.
+* Pinned artifacts are **byte-deterministic**: wall-clock timings are printed to
+  the console but never written into a pinned file (a V1.9 implementation fix —
+  the first calibration artifact changed hash on every run). Verified by running
+  each generator twice and comparing sha256.
+* Artifact pins (`manifests/v1.9_artifact_pins.json`, 7 files) are verified in CI; `tools/ci_checks.py` re-runs the digitization deterministically and compares against the committed JSON.
 * Determinism: the Fig. S32 pipeline reproduces `s32_results.json` for all
   raster/coordinate methods; `data/s32_results.json` md5
   `aaebd692f9daeb60d203a8873c32fae2` and `data/s32_curves.npz` md5
@@ -414,6 +499,7 @@ undefined convergence status. Six of these are directly exercised by tests.
 | tandem solve | 1.12 s | 400 bias points × 2 subcell inversions |
 | calibration (6 parameters, 765 residuals) | 0.7 s | least squares + finite-difference Jacobian |
 | OAT scan (114 solves) | 123 s | trivially parallelizable; planned |
+| mechanism campaign #1 (8 + 30 + 96 solves) | 124 s | 1.08 s per solve |
 | test suite | 12.6 s | 61 passed, 1 skip |
 
 No artifact explosion: 6 pinned artifacts totalling ≈50 kB; no per-run output
@@ -445,10 +531,14 @@ python data/s32_digitize_v18.py --write              # historical digitization a
 4. **Model form:** IQE-M1 is preferred but is a constant-collection
    parameterisation; the top-cell transport physics (surface recombination
    velocity, real absorption coefficient) is not yet constrained by data.
-5. **Not yet implemented:** global optimization, sampling, Sobol/LHS, surrogate
-   models, UQ engine, VOI engine, synthetic experiment lab, discovery engine,
-   multi-fidelity Levels 0–5, bottom→top luminescent coupling, refined thermal
-   energy balance, and the autonomous campaign loop. These are V1.9-C…F.
+5. **Registered-range audit:** `thermal_resistance_k_cm2_w` upper bound implies
+   a 200 K rise at one sun; the LHS envelope therefore contains unphysical
+   corners. Re-justify the bound (or add an explicit physical-envelope guard)
+   in V1.9-C.
+6. **Not yet implemented:** global optimization, Sobol variance decomposition,
+   surrogate models, UQ engine, VOI engine, synthetic experiment lab, discovery
+   engine, multi-fidelity Levels 0–5, bottom→top luminescent coupling, refined
+   thermal energy balance, and the autonomous campaign loop. These are V1.9-C…F.
 
 ## 15. Next recommended direction
 
@@ -456,7 +546,8 @@ python data/s32_digitize_v18.py --write              # historical digitization a
    solve; refined thermal energy balance; bottom→top coupling; Level 0–5
    multi-fidelity ladder with divergence cross-checks; vectorize the tandem
    solve (target ≥10× for campaign work) with recorded memory/agreement.
-2. **V1.9-D (optimization/discovery):** LHS + Sobol + interaction search over
+2. **V1.9-D (optimization/discovery):** Sobol variance decomposition (with a
+   surrogate whose approximation error is reported) + interaction search over
    mechanisms A/B/C (baseline/A/B/C/AB/AC/BC/ABC), local + multi-start global
    optimization, surrogate-assisted search with speedup *and* approximation
    error reported, Pareto fronts with full provenance per candidate.

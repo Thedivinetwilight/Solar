@@ -33,6 +33,7 @@ PINS = os.path.join(HERE, "manifests", "v1.9_artifact_pins.json")
 PINNED_ARTIFACTS = (
     "data/v19_calibration.json",
     "data/v19_oat_sensitivity.json",
+    "data/v19_mechanism_campaign.json",
     "data/s32_results.json",
     "data/s32_curves.npz",
     "data/eqe4e_results.json",
@@ -88,7 +89,8 @@ def main() -> int:
         "tandem_at_registry_defaults": evaluate_tandem(
             ParamSet.defaults(), model_form=args.model_form).to_dict(),
         "n_registry_parameters": len(all_specs()),
-        "wall_clock_s": wall,
+        # NOTE: wall-clock timing is deliberately NOT written into the artifact:
+        # a pinned file must be byte-deterministic (audit I).
     }
     print(json.dumps({k: v for k, v in summary.items()
                       if k not in ("calibration", "tandem_at_fitted_parameters",
