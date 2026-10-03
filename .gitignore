@@ -4,3 +4,8 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .venv/
+
+# V1.9 additions
+.venv/
+data/sources/*.pdf
+*.nbi

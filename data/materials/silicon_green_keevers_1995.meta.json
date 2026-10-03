@@ -1,0 +1,14 @@
+{
+  "material": "crystalline silicon (intrinsic, 300 K)",
+  "source": "M. A. Green, M. J. Keevers, Prog. Photovolt. 3 (1995) 189-192",
+  "tabulation_used": "PV Lighthouse / pveducation.org 'Optical Properties of Silicon'",
+  "url": "https://www.pveducation.org/pvcdrom/materials/optical-properties-of-silicon",
+  "window_nm": [
+    300.0,
+    1200.0
+  ],
+  "step_nm": 10.0,
+  "k_derivation": "k = alpha*lambda/(4*pi) where the source leaves k blank",
+  "file_sha256": "90269d88ba85f66bee6463e411f605b62baec2bcb6031e8f42fdd56cf81efd0d",
+  "provenance_category": "LITERATURE-DERIVED"
+}

@@ -21,10 +21,15 @@ from typing import Optional
 
 class ProvenanceCategory(str, Enum):
     EXPERIMENTAL = "EXPERIMENTAL"
+    EXPERIMENTALLY_CONSTRAINED = "EXPERIMENTALLY-CONSTRAINED"  # V1.9 addition:
+    # a value constrained by an experimental datum (e.g. a measured thickness)
+    # without being a direct measurement itself. Kept distinct from
+    # EXPERIMENTAL so that no derived number can be presented as measured.
     LITERATURE_DERIVED = "LITERATURE-DERIVED"
     DIGITIZED = "DIGITIZED"
     MODEL_FIT = "MODEL-FIT"
     ASSUMED = "MODEL-ASSUMED"
+    MODEL_ASSUMED = "MODEL-ASSUMED"          # alias (V1.9 readability)
     DATA_REQUIRED = "DATA_REQUIRED"
     SCENARIO = "SCENARIO"
     SOURCE_REPORTED = "SOURCE-REPORTED"
