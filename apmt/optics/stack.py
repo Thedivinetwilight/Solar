@@ -42,7 +42,7 @@ from .tmm import Layer, OpticsResult, solve_incoherent_substrate
 # assumptions of the stack model, not fitted device parameters):
 MG_F2_N = 1.38            # magnesium fluoride ARC (low-index, dispersionless)
 TRANSPORT_N = 1.90        # TCO / transport-layer proxy
-TRANSPORT_K = 0.05        # parasitic absorption strength of that proxy
+TCO_UV_DECAY_NM = 60.0    # decay scale of the TCO band-edge absorption
 
 
 @dataclass(frozen=True)
@@ -99,9 +99,31 @@ class TandemOpticsResult:
         }
 
 
-def _transport_layer(thickness_nm: float, wl: np.ndarray) -> Layer:
-    return Layer("transport", thickness_nm, TRANSPORT_N, TRANSPORT_K,
-                 coherent=True, pv_active=False)
+def transport_layer_k(ps: ParamSet, wl: np.ndarray) -> np.ndarray:
+    """Extinction coefficient of the lossy front transport/TCO proxy layer.
+
+    Two documented absorption mechanisms of transparent conductive oxides:
+
+    * free-carrier (Drude) absorption, rising towards the infrared:
+      ``k_fc * (lambda / 1000 nm)**2``
+    * band-edge/Urbach absorption at short wavelengths, decaying over
+      ``TCO_UV_DECAY_NM`` nm from the 300 nm amplitude.
+
+    Both amplitudes are registry parameters with literature-backed defaults and
+    ranges; the decay length is a documented shape assumption. This term only
+    ever *removes* photons from the useful budget, so it can never inflate an
+    efficiency -- it exists because the measured EQE/R-T-A require a
+    wavelength-dependent parasitic channel.
+    """
+    wl = np.asarray(wl, dtype=float)
+    k_fc = ps["tco_free_carrier_k"] * (wl / 1000.0) ** 2
+    k_uv = ps["tco_uv_absorption_k"] * np.exp(-np.maximum(wl - 300.0, 0.0) / TCO_UV_DECAY_NM)
+    return k_fc + k_uv
+
+
+def _transport_layer(ps: ParamSet, wl: np.ndarray) -> Layer:
+    return Layer("transport", ps["parasitic_layer_thickness_nm"], TRANSPORT_N,
+                 transport_layer_k(ps, wl), coherent=True, pv_active=False)
 
 
 def build_stack(ps: ParamSet) -> tuple:
@@ -114,7 +136,7 @@ def build_stack(ps: ParamSet) -> tuple:
     si = silicon_index(wl, tail_nm=25.0)
     front = [
         Layer("arc", ps["arc_thickness_nm"], MG_F2_N, 0.0, pv_active=False),
-        _transport_layer(ps["parasitic_layer_thickness_nm"], wl),
+        _transport_layer(ps, wl),
         Layer("perovskite", ps["perovskite_thickness_nm"], pv.n, pv.k, pv_active=True),
     ]
     substrate = Layer("silicon", ps["silicon_thickness_um"] * 1000.0, si.n, si.k,

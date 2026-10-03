@@ -208,6 +208,22 @@ _SPECS: Tuple[ParamSpec, ...] = (
        "(fixed n = 1.9, k = 0.05); mechanism A loss channel",
        "parasitic absorption is required by the optical budget but its exact "
        "magnitude is DATA_REQUIRED"),
+    _p("tco_free_carrier_k", "1", 0.02, 0.0, 0.20,
+       ProvenanceCategory.LITERATURE_DERIVED, RangeClass.LITERATURE_SUPPORTED,
+       "Extinction coefficient of the front TCO/transport layer at 1000 nm "
+       "from free-carrier absorption, modelled as k(lambda) = k*(lambda/1000 nm)^2",
+       "the champion stack uses a TCO front contact; free-carrier absorption in "
+       "TCOs is documented (e.g. 10-20 nm ITO, k ~ 0.01-0.06 at 1000 nm) but the "
+       "exact TCO of the champion is DATA_REQUIRED",
+       uncertainty=0.01),
+    _p("tco_uv_absorption_k", "1", 0.60, 0.0, 2.0,
+       ProvenanceCategory.LITERATURE_DERIVED, RangeClass.LITERATURE_SUPPORTED,
+       "Extinction coefficient of the front TCO/transport layer at 300 nm "
+       "(short-wavelength band-edge/Urbach absorption), decaying with a fixed "
+       "60 nm scale to the free-carrier term",
+       "TCO band-edge absorption below ~400 nm is documented; the decay length "
+       "is a model shape assumption (60 nm), the amplitude is fitted",
+       uncertainty=0.2),
     _p("collection_efficiency_top", "1", 0.98, 0.6, 1.0,
        ProvenanceCategory.MODEL_FIT, RangeClass.MODEL_ASSUMED,
        "Collection efficiency (IQE plateau) of the perovskite top cell",
@@ -235,10 +251,13 @@ _SPECS: Tuple[ParamSpec, ...] = (
        "Linear temperature coefficient of the perovskite bandgap",
        "reported dEg/dT for triple-cation perovskites is -0.25 to -0.45 meV/K",
        uncertainty=1.0e-4),
-    _p("thermal_resistance_k_cm2_w", "K*cm^2/mW", 8.0, 1.0, 40.0,
+    _p("thermal_resistance_k_cm2_w", "K*cm^2/mW", 0.3, 0.05, 2.0,
        ProvenanceCategory.MODEL_ASSUMED, RangeClass.EXPLORATORY,
-       "Areal thermal resistance from the junction to the mount",
-       "mechanism C (thermal management) parameter"),
+       "Areal thermal resistance from the junction to the mount; the default "
+       "0.3 K cm^2 / mW reproduces the ~25 K cell heating at one sun that is "
+       "standard for glass-mounted cells",
+       "mechanism C (thermal management) parameter; measured thermal data are "
+       "DATA_REQUIRED"),
     _p("thermal_management_gain", "1", 0.0, 0.0, 1.0,
        ProvenanceCategory.MODEL_ASSUMED, RangeClass.EXPLORATORY,
        "Fractional reduction of the junction-to-mount thermal resistance "
@@ -249,6 +268,29 @@ _SPECS: Tuple[ParamSpec, ...] = (
        "Fraction of absorbed (non-electrical) power that becomes heat rather "
        "than being re-emitted (energy balance coupling)",
        "conservative default 1.0 = all sub-bandgap/non-collected power is heat"),
+
+    # ---- defect-physics parameters used by the subcell builder ------------
+    _p("perovskite_srh_lifetime_ns", "ns", 1000.0, 10.0, 20000.0,
+       ProvenanceCategory.LITERATURE_DERIVED, RangeClass.LITERATURE_SUPPORTED,
+       "Effective SRH lifetime of the perovskite absorber",
+       "reported effective lifetimes for high-quality triple-cation "
+       "perovskites are 0.1-10 us; the interval covers the tandem literature",
+       uncertainty=500.0),
+    _p("perovskite_doping_cm3", "1/cm^3", 1.0e17, 1.0e15, 1.0e18,
+       ProvenanceCategory.LITERATURE_DERIVED, RangeClass.LITERATURE_SUPPORTED,
+       "Effective carrier concentration of the perovskite absorber used in the "
+       "SRH slab term",
+       "typical intrinsic/mildly doped perovskite densities of 1e15-1e18 cm^-3"),
+    _p("perovskite_srv_cm_s", "cm/s", 1000.0, 1.0, 1.0e5,
+       ProvenanceCategory.MODEL_ASSUMED, RangeClass.EXPLORATORY,
+       "Effective surface recombination velocity at the perovskite interfaces",
+       "interfacial recombination is the dominant non-radiative channel in "
+       "perovskite cells; the interval spans passivated to unpassivated"),
+    _p("silicon_doping_cm3", "1/cm^3", 1.0e16, 1.0e14, 1.0e17,
+       ProvenanceCategory.LITERATURE_DERIVED, RangeClass.LITERATURE_SUPPORTED,
+       "Base doping concentration of the silicon wafer (n-type FZ)",
+       "the champion uses n-type FZ silicon; 1e15-1e16 cm^-3 is the standard "
+       "base doping for high-efficiency SHJ cells"),
 
     # ---- interfaces --------------------------------------------------------
     _p("interface_loss_top_ma_cm2", "mA/cm^2", 0.0, 0.0, 2.0,
