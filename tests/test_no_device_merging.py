@@ -7,6 +7,7 @@ source'.
 import pytest
 
 from apmt.genealogy import (
+    InvalidLinkageError,
     Linkage,
     LinkageClass,
     NoMergeWithoutSerialError,
@@ -51,8 +52,13 @@ def test_configuration_level_linkage_cannot_merge():
 
 def test_serial_level_linkage_may_merge():
     lk = Linkage("A", "B", LinkageClass.SERIAL_LEVEL_LINKAGE,
-                 "serial match in source", serial_available=True)
+                 "serial match in source", serial_available=True,
+                 serial_a="SN-0042", serial_b="SN-0042")
     assert_merge_permitted(lk)  # no exception
+    # audit item D: the class label alone can no longer unlock merging
+    with pytest.raises(InvalidLinkageError):
+        Linkage("A", "B", LinkageClass.SERIAL_LEVEL_LINKAGE,
+                "serial match claimed", serial_available=True)
 
 
 def test_champion_genealogy_has_no_serials():

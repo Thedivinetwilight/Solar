@@ -28,6 +28,15 @@ class NoMergeWithoutSerialError(RuntimeError):
     pass
 
 
+class InvalidLinkageError(ValueError):
+    """Raised when a linkage object contradicts the evidence it claims.
+
+    V1.9 audit item D: previously a Linkage could claim SERIAL_LEVEL_LINKAGE
+    while carrying serial_available=False, i.e. a synthetic linkage class could
+    bypass the actual evidence requirement. That is now structurally impossible.
+    """
+
+
 @dataclass(frozen=True)
 class DeviceRecord:
     device_id: str
@@ -45,14 +54,58 @@ class DeviceRecord:
 
 @dataclass(frozen=True)
 class Linkage:
+    """Evidence of a relationship between two devices.
+
+    Invariants enforced here (audit item D):
+
+    * SERIAL_LEVEL_LINKAGE requires ``serial_available=True`` and non-empty
+      serial identifiers for both devices -- a class label alone can never
+      satisfy the serial-level evidence requirement;
+    * a linkage may not claim more than its evidence: ``serial_available``
+      must be False unless serial identifiers are actually supplied;
+    * merging is permitted *only* for SERIAL_LEVEL_LINKAGE with verified serial
+      identity (``serial_verified=True``).
+    """
+
     device_a: str
     device_b: str
     linkage_class: LinkageClass
     evidence: str
     serial_available: bool = False
+    serial_a: Optional[str] = None
+    serial_b: Optional[str] = None
+    serial_verified: bool = False
+
+    def __post_init__(self):
+        if not self.evidence.strip():
+            raise InvalidLinkageError("linkage requires a non-empty evidence string")
+        if self.linkage_class == LinkageClass.SERIAL_LEVEL_LINKAGE:
+            if not self.serial_available:
+                raise InvalidLinkageError(
+                    "SERIAL_LEVEL_LINKAGE requires serial_available=True "
+                    "(audit item D: no synthetic serial linkage)")
+            if not (self.serial_a and self.serial_b):
+                raise InvalidLinkageError(
+                    "SERIAL_LEVEL_LINKAGE requires explicit serial identifiers "
+                    "for both devices")
+            if self.serial_a != self.serial_b:
+                raise InvalidLinkageError(
+                    f"serial identifiers differ ({self.serial_a!r} vs "
+                    f"{self.serial_b!r}): not the same physical device")
+        else:
+            if self.serial_verified:
+                raise InvalidLinkageError(
+                    "serial_verified cannot be True without SERIAL_LEVEL_LINKAGE")
+
+    def verified_serial_identity(self) -> bool:
+        return (self.linkage_class == LinkageClass.SERIAL_LEVEL_LINKAGE
+                and self.serial_available and bool(self.serial_a)
+                and self.serial_a == self.serial_b)
 
     def allows_merge(self) -> bool:
-        return self.linkage_class == LinkageClass.SERIAL_LEVEL_LINKAGE
+        """Merging requires serial-level linkage *and* verified serial identity."""
+        return self.linkage_class == LinkageClass.SERIAL_LEVEL_LINKAGE and \
+            self.serial_available and self.verified_serial_identity()
 
 
 def classify_linkage(evidence: dict) -> LinkageClass:
