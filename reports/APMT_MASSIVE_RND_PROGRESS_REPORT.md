@@ -3,7 +3,7 @@
 **Cycle:** V1.9-A → V1.9-B (engineering hardening → model architecture)
 **Date:** 2026-10-03
 **Branch:** `arena/01a102e7-solar` · **Repository:** github.com/Thedivinetwilight/Solar
-**Commits this cycle:** `abece5f` (V1.9-A1) → `ffe54e0` (V1.9-B1) → `b35cf66` (V1.9-B2) → `7cafe30` (V1.9-B3) → `f77979c` (V1.9-A2) → `4f88ec4` (V1.9-B1 continued: twin physics)
+**Commits this cycle:** `abece5f` (V1.9-A1) → `ffe54e0` (V1.9-B1) → `b35cf66` (V1.9-B2) → `7cafe30` (V1.9-B3) → `f77979c` (V1.9-A2) → `4f88ec4` (V1.9-B1: twin physics) → `c4bf52d` (V1.9-B4: self-heating, coupling, OAT, CLI) → `f2dea0a` (V1.9-B5: this report). Branch pushed to `origin/arena/01a102e7-solar`.
 **Base (V1.8 endpoint, untouched):** `b846e2e2f1380f253f876e1ef9606b731dd1ca3d`
 
 This is the single authoritative report for the cycle. Everything below is
@@ -341,7 +341,7 @@ longer depends on it: no mechanism or gate check consumes it.
 | F — G5 must verify grids/coverage/units/uncertainty/closure | **DONE** | `apmt/validation/optical_evidence.py`; a gapped 500–900 nm spectrum now FAILS G5 explicitly |
 | G — serious README | **DONE** | `README.md` (status table, rules, caveats) |
 | H — `pyproject.toml` with compatible versions | **DONE** | `pyproject.toml` (numpy ≥2,<3; scipy ≥1.11,<2; pvlib ≥0.10,<1; pillow ≥10) |
-| I — non-mutating CI | **DONE** | `.github/workflows/ci.yml` + `tools/ci_checks.py` (6 checks; 4/6 pass locally, the two remaining are "report exists" and "git clean", both satisfied by this commit) |
+| I — non-mutating CI | **DONE** | `.github/workflows/ci.yml` + `tools/ci_checks.py` (6/6 checks pass after the report commit) |
 
 ### 7.3 Invariant checks that now fail loudly
 
