@@ -44,6 +44,19 @@ DEFAULT_PARAMS = [
 FACTORS = (0.5, 0.8, 0.9, 1.1, 1.2, 2.0)
 
 
+def _grid_for(s, v0: float) -> tuple:
+    """Test values for one parameter: multiplicative factors, plus (for
+    switch-like parameters with a zero default, where multiplication can never
+    leave zero) range-anchored values. Returns (values, mode)."""
+    vals = sorted({round(v0 * f, 10) for f in FACTORS
+                   if s.in_bounds(v0 * f) and v0 * f != v0})
+    if v0 == 0.0:                       # switch / off-by-default mechanism
+        frac = [f for f in (0.05, 0.25, 0.5, 1.0) if s.in_bounds(f * s.high)]
+        vals = sorted({round(f * s.high, 10) for f in frac})
+        return vals, "range-anchored (default is 0: multiplicative scan is degenerate)"
+    return vals, "multiplicative"
+
+
 def scan(params=DEFAULT_PARAMS, factors=FACTORS) -> dict:
     base = ParamSet.defaults()
     t0 = time.time()
@@ -51,29 +64,36 @@ def scan(params=DEFAULT_PARAMS, factors=FACTORS) -> dict:
     rows = {}
     for name in params:
         s = spec(name)
-        v0 = base[name]
+        v0 = float(base[name])
+        vals, mode = _grid_for(s, v0)
         points = []
-        for f in factors:
-            v = v0 * f
-            if not s.in_bounds(v) or v == v0:
-                continue
+        for v in vals:
             o = evaluate_tandem(base.with_mapping({name: v}))
-            points.append({"value": v, "delta_pct_of_default": round(100 * (f - 1), 2),
-                           "pce_pct": round(o.pce_pct, 4),
-                           "delta_pce_pp": round(o.pce_pct - o0.pce_pct, 4),
-                           "jsc": round(o.jsc_ma_cm2, 4), "voc": round(o.voc_v, 4),
-                           "ff": round(o.ff, 4)})
+            points.append({"value": float(v), "delta_pct_of_default": round(100 * (v / v0 - 1), 2)
+                           if v0 else None,
+                           "pce_pct": round(float(o.pce_pct), 4),
+                           "delta_pce_pp": round(float(o.pce_pct - o0.pce_pct), 4),
+                           "jsc": round(float(o.jsc_ma_cm2), 4),
+                           "voc": round(float(o.voc_v), 4),
+                           "ff": round(float(o.ff), 4),
+                           "delta_junction_t_k": round(
+                               float(o.detail["thermal"]["delta_t_k"]
+                                     - o0.detail["thermal"]["delta_t_k"]), 4)})
         span = max((abs(p["delta_pce_pp"]) for p in points), default=0.0)
         rows[name] = {
             "default": v0, "unit": s.unit, "range": [s.low, s.high],
             "range_class": s.range_class.value, "category": s.category.value,
-            "max_abs_delta_pce_pp": round(span, 4),
-            "inert": span < 1e-6,
+            "scan_mode": mode,
+            "max_abs_delta_pce_pp": round(float(span), 4),
+            "inert": bool(span < 1e-6),
+            "inert_note": ("no effect on any reported quantity over the scanned "
+                           "range: parameter is structurally inactive"
+                           if span < 1e-6 else ""),
             "points": points,
         }
     return {
         "category": "OAT-SCREENING (local, one-factor-at-a-time; NOT global sensitivity)",
-        "baseline_pce_pct": round(o0.pce_pct, 4),
+        "baseline_pce_pct": round(float(o0.pce_pct), 4),
         "baseline": o0.to_dict(),
         "params": rows,
         "wall_clock_s": round(time.time() - t0, 2),

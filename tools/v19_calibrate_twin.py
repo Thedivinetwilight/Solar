@@ -28,6 +28,33 @@ from apmt.inference.calibration import calibrate_twin      # noqa: E402
 from apmt.params.registry import ParamSet, all_specs       # noqa: E402
 
 OUT = os.path.join(HERE, "data", "v19_calibration.json")
+PINS = os.path.join(HERE, "manifests", "v1.9_artifact_pins.json")
+
+PINNED_ARTIFACTS = (
+    "data/v19_calibration.json",
+    "data/v19_oat_sensitivity.json",
+    "data/s32_results.json",
+    "data/s32_curves.npz",
+    "data/eqe4e_results.json",
+    "data/eqe4e_curves.npz",
+)
+
+
+def write_pins() -> dict:
+    """Record sha256 of the committed artifacts; CI verifies these."""
+    import hashlib
+    pins = {"generated_by": "tools/v19_calibrate_twin.py",
+            "note": "sha256 pins of committed artifacts; CI verifies these",
+            "files": {}}
+    for rel in PINNED_ARTIFACTS:
+        path = os.path.join(HERE, rel)
+        if os.path.exists(path):
+            pins["files"][rel] = {
+                "sha256": hashlib.sha256(open(path, "rb").read()).hexdigest(),
+                "bytes": os.path.getsize(path)}
+    with open(PINS, "w") as f:
+        json.dump(pins, f, indent=2, sort_keys=True)
+    return pins
 
 
 def main() -> int:
@@ -77,7 +104,8 @@ def main() -> int:
     if args.write:
         with open(OUT, "w") as f:
             json.dump(summary, f, indent=2)
-        print(f"wrote {OUT}")
+        pins = write_pins()
+        print(f"wrote {OUT} and {PINS} ({len(pins['files'])} pins)")
     return 0
 
 

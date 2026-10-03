@@ -1,65 +1,1572 @@
 {
   "baseline": {
     "coupling_converged": true,
-    "coupling_iterations": 2,
+    "coupling_iterations": 0,
     "current_matching_ratio": 1.259201,
     "detail": {
       "j0_bottom": {
         "detail": {
           "doping_cm3": 1e+16,
-          "lifetime_s": 0.005,
-          "srh_route": "slab SRH+surface model",
+          "lifetime_s": null,
+          "srh_route": "override (fitted/source-constrained value)",
           "srv_cm_s": 10.0,
-          "thickness_cm": 0.026000000000000002
+          "thickness_cm": null
         },
         "ere": 0.0001,
         "ideality_srh": 1.05,
-        "j0_radiative_ma_cm2": 3.2051360626266233e-06,
-        "j0_srh_ma_cm2": 1.3747877248848574e-10,
-        "j0_total_ma_cm2": 3.205273541399112e-06,
-        "radiative_fraction": 0.999957108567892,
-        "temperature_k": 298.15
+        "j0_radiative_ma_cm2": 0.00021194434502165633,
+        "j0_srh_ma_cm2": 7.393117420421321e-07,
+        "j0_total_ma_cm2": 0.00021268365676369846,
+        "radiative_fraction": 0.9965238902072125,
+        "temperature_k": 328.15
       },
       "j0_top": {
         "detail": {
-          "doping_cm3": 1e+17,
-          "lifetime_s": 1.0000000000000002e-06,
-          "srh_route": "slab SRH+surface model",
-          "srv_cm_s": 1000.0,
-          "thickness_cm": 4.9999999999999996e-05
+          "doping_cm3": 1e+16,
+          "lifetime_s": null,
+          "srh_route": "override (fitted/source-constrained value)",
+          "srv_cm_s": 10.0,
+          "thickness_cm": null
         },
         "ere": 0.02,
         "ideality_srh": 1.45,
-        "j0_radiative_ma_cm2": 2.3684116615932474e-18,
-        "j0_srh_ma_cm2": 5.85719941837487e-20,
-        "j0_total_ma_cm2": 2.426983655776996e-18,
-        "radiative_fraction": 0.975866341726559,
-        "temperature_k": 298.15
+        "j0_radiative_ma_cm2": 1.4035852360692397e-15,
+        "j0_srh_ma_cm2": 4.3422393806170575e-15,
+        "j0_total_ma_cm2": 5.745824616686297e-15,
+        "radiative_fraction": 0.24427916438540864,
+        "temperature_k": 328.15
       },
       "luminescent_coupling_beta": 0.0,
       "optics_model_form": "IQE-M1",
       "photon_recycling_gain_top": 1.0,
       "rs_ohm_cm2": 1.5,
-      "rsh_ohm_cm2": 3000.0
+      "rsh_ohm_cm2": 3000.0,
+      "thermal": {
+        "ambient_k": 298.15,
+        "category": "MODEL-ASSUMED-CLOSURE",
+        "closure": "conservative: all incident power treated as heat",
+        "delta_t_k": 30.0,
+        "heat_flux_mw_cm2": 100.0,
+        "junction_k": 328.15,
+        "r_th_effective_k_cm2_w": 0.3,
+        "self_heating": true
+      }
     },
-    "ff": 0.856723,
+    "ff": 0.837828,
     "j_bottom_sc": 19.802963,
     "j_top_sc": 15.726614,
-    "jmp_ma_cm2": 14.960296,
-    "jsc_ma_cm2": 15.614099,
+    "jmp_ma_cm2": 14.932711,
+    "jsc_ma_cm2": 15.641516,
     "model_form": "IQE-M1",
-    "pce_pct": 20.241172,
-    "temperature_k": 298.15,
-    "v_bottom_at_mpp": 0.365559,
-    "v_top_at_mpp": 1.035877,
-    "vmp_v": 1.352993,
-    "voc_v": 1.513136
+    "pce_pct": 17.908159,
+    "temperature_k": 328.15,
+    "v_bottom_at_mpp": 0.283915,
+    "v_top_at_mpp": 0.960564,
+    "vmp_v": 1.199257,
+    "voc_v": 1.366523
   },
-  "baseline_pce_pct": 20.2412,
+  "baseline_pce_pct": 17.9082,
   "category": "OAT-SCREENING (local, one-factor-at-a-time; NOT global sensitivity)",
-  "n_solves": 102,
+  "n_solves": 114,
   "params": {
     "absorption_heat_fraction": {
       "category": "MODEL-ASSUMED",
       "default": 1.0,
-      "inert": 
+      "inert": false,
+      "inert_note": "",
+      "max_abs_delta_pce_pp": 1.1674,
+      "points": [
+        {
+          "delta_junction_t_k": -15.0,
+          "delta_pce_pp": 1.1674,
+          "delta_pct_of_default": -50.0,
+          "ff": 0.8477,
+          "jsc": 15.6278,
+          "pce_pct": 19.0756,
+          "value": 0.5,
+          "voc": 1.4399
+        },
+        {
+          "delta_junction_t_k": -6.0,
+          "delta_pce_pp": 0.4676,
+          "delta_pct_of_default": -20.0,
+          "ff": 0.8419,
+          "jsc": 15.636,
+          "pce_pct": 18.3758,
+          "value": 0.8,
+          "voc": 1.396
+        },
+        {
+          "delta_junction_t_k": -3.0,
+          "delta_pce_pp": 0.2337,
+          "delta_pct_of_default": -10.0,
+          "ff": 0.8399,
+          "jsc": 15.6388,
+          "pce_pct": 18.1418,
+          "value": 0.9,
+          "voc": 1.3813
+        }
+      ],
+      "range": [
+        0.0,
+        1.0
+      ],
+      "range_class": "MODEL-ASSUMED",
+      "scan_mode": "multiplicative",
+      "unit": "1"
+    },
+    "arc_thickness_nm": {
+      "category": "MODEL-ASSUMED",
+      "default": 100.0,
+      "inert": false,
+      "inert_note": "",
+      "max_abs_delta_pce_pp": 1.9631,
+      "points": [
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -0.5397,
+          "delta_pct_of_default": -50.0,
+          "ff": 0.833,
+          "jsc": 15.29,
+          "pce_pct": 17.3684,
+          "value": 50.0,
+          "voc": 1.3636
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.3224,
+          "delta_pct_of_default": -20.0,
+          "ff": 0.8342,
+          "jsc": 15.9951,
+          "pce_pct": 18.2306,
+          "value": 80.0,
+          "voc": 1.3664
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.2363,
+          "delta_pct_of_default": -10.0,
+          "ff": 0.8359,
+          "jsc": 15.8833,
+          "pce_pct": 18.1444,
+          "value": 90.0,
+          "voc": 1.3666
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -0.3388,
+          "delta_pct_of_default": 10.0,
+          "ff": 0.8396,
+          "jsc": 15.3163,
+          "pce_pct": 17.5693,
+          "value": 110.0,
+          "voc": 1.3662
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -0.7285,
+          "delta_pct_of_default": 20.0,
+          "ff": 0.8413,
+          "jsc": 14.9548,
+          "pce_pct": 17.1797,
+          "value": 120.0,
+          "voc": 1.3655
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -1.9631,
+          "delta_pct_of_default": 100.0,
+          "ff": 0.8414,
+          "jsc": 13.9155,
+          "pce_pct": 15.9451,
+          "value": 200.0,
+          "voc": 1.3619
+        }
+      ],
+      "range": [
+        0.0,
+        220.0
+      ],
+      "range_class": "EXPLORATORY",
+      "scan_mode": "multiplicative",
+      "unit": "nm"
+    },
+    "collection_efficiency_bottom": {
+      "category": "MODEL-FIT",
+      "default": 0.98,
+      "inert": false,
+      "inert_note": "",
+      "max_abs_delta_pce_pp": 0.8123,
+      "points": [
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -0.8123,
+          "delta_pct_of_default": -20.0,
+          "ff": 0.8019,
+          "jsc": 15.6751,
+          "pce_pct": 17.0958,
+          "value": 0.784,
+          "voc": 1.3601
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -0.2406,
+          "delta_pct_of_default": -10.0,
+          "ff": 0.8281,
+          "jsc": 15.6478,
+          "pce_pct": 17.6676,
+          "value": 0.882,
+          "voc": 1.3635
+        }
+      ],
+      "range": [
+        0.6,
+        1.0
+      ],
+      "range_class": "MODEL-ASSUMED",
+      "scan_mode": "multiplicative",
+      "unit": "1"
+    },
+    "collection_efficiency_top": {
+      "category": "MODEL-FIT",
+      "default": 0.98,
+      "inert": false,
+      "inert_note": "",
+      "max_abs_delta_pce_pp": 3.5257,
+      "points": [
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -3.5257,
+          "delta_pct_of_default": -20.0,
+          "ff": 0.8468,
+          "jsc": 12.4892,
+          "pce_pct": 14.3824,
+          "value": 0.784,
+          "voc": 1.36
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -1.7381,
+          "delta_pct_of_default": -10.0,
+          "ff": 0.8432,
+          "jsc": 14.065,
+          "pce_pct": 16.1701,
+          "value": 0.882,
+          "voc": 1.3635
+        }
+      ],
+      "range": [
+        0.6,
+        1.0
+      ],
+      "range_class": "MODEL-ASSUMED",
+      "scan_mode": "multiplicative",
+      "unit": "1"
+    },
+    "luminescent_coupling_top_to_bottom": {
+      "category": "MODEL-ASSUMED",
+      "default": 0.0,
+      "inert": false,
+      "inert_note": "",
+      "max_abs_delta_pce_pp": 0.0177,
+      "points": [
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.0009,
+          "delta_pct_of_default": null,
+          "ff": 0.8375,
+          "jsc": 15.6415,
+          "pce_pct": 17.9091,
+          "value": 0.025,
+          "voc": 1.3671
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.0045,
+          "delta_pct_of_default": null,
+          "ff": 0.8364,
+          "jsc": 15.6415,
+          "pce_pct": 17.9127,
+          "value": 0.125,
+          "voc": 1.3692
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.009,
+          "delta_pct_of_default": null,
+          "ff": 0.8351,
+          "jsc": 15.6415,
+          "pce_pct": 17.9171,
+          "value": 0.25,
+          "voc": 1.3716
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.0177,
+          "delta_pct_of_default": null,
+          "ff": 0.8329,
+          "jsc": 15.6415,
+          "pce_pct": 17.9259,
+          "value": 0.5,
+          "voc": 1.3759
+        }
+      ],
+      "range": [
+        0.0,
+        0.5
+      ],
+      "range_class": "EXPLORATORY",
+      "scan_mode": "range-anchored (default is 0: multiplicative scan is degenerate)",
+      "unit": "1"
+    },
+    "parasitic_layer_thickness_nm": {
+      "category": "MODEL-ASSUMED",
+      "default": 15.0,
+      "inert": false,
+      "inert_note": "",
+      "max_abs_delta_pce_pp": 0.079,
+      "points": [
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.079,
+          "delta_pct_of_default": -50.0,
+          "ff": 0.8371,
+          "jsc": 15.7254,
+          "pce_pct": 17.9871,
+          "value": 7.5,
+          "voc": 1.3665
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.0239,
+          "delta_pct_of_default": -20.0,
+          "ff": 0.8375,
+          "jsc": 15.668,
+          "pce_pct": 17.9321,
+          "value": 12.0,
+          "voc": 1.3665
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.0107,
+          "delta_pct_of_default": -10.0,
+          "ff": 0.8377,
+          "jsc": 15.6536,
+          "pce_pct": 17.9189,
+          "value": 13.5,
+          "voc": 1.3665
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -0.0085,
+          "delta_pct_of_default": 10.0,
+          "ff": 0.838,
+          "jsc": 15.6315,
+          "pce_pct": 17.8997,
+          "value": 16.5,
+          "voc": 1.3665
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -0.0148,
+          "delta_pct_of_default": 20.0,
+          "ff": 0.8381,
+          "jsc": 15.6235,
+          "pce_pct": 17.8934,
+          "value": 18.0,
+          "voc": 1.3666
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -0.006,
+          "delta_pct_of_default": 100.0,
+          "ff": 0.8388,
+          "jsc": 15.6149,
+          "pce_pct": 17.9021,
+          "value": 30.0,
+          "voc": 1.3668
+        }
+      ],
+      "range": [
+        0.0,
+        60.0
+      ],
+      "range_class": "EXPLORATORY",
+      "scan_mode": "multiplicative",
+      "unit": "nm"
+    },
+    "perovskite_doping_cm3": {
+      "category": "LITERATURE-DERIVED",
+      "default": 1e+17,
+      "inert": true,
+      "inert_note": "no effect on any reported quantity over the scanned range: parameter is structurally inactive",
+      "max_abs_delta_pce_pp": 0.0,
+      "points": [
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -0.0,
+          "delta_pct_of_default": -50.0,
+          "ff": 0.8378,
+          "jsc": 15.6415,
+          "pce_pct": 17.9081,
+          "value": 5e+16,
+          "voc": 1.3665
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -0.0,
+          "delta_pct_of_default": -20.0,
+          "ff": 0.8378,
+          "jsc": 15.6415,
+          "pce_pct": 17.9081,
+          "value": 8e+16,
+          "voc": 1.3665
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -0.0,
+          "delta_pct_of_default": -10.0,
+          "ff": 0.8378,
+          "jsc": 15.6415,
+          "pce_pct": 17.9082,
+          "value": 9e+16,
+          "voc": 1.3665
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.0,
+          "delta_pct_of_default": 10.0,
+          "ff": 0.8378,
+          "jsc": 15.6415,
+          "pce_pct": 17.9082,
+          "value": 1.1000000000000002e+17,
+          "voc": 1.3665
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.0,
+          "delta_pct_of_default": 20.0,
+          "ff": 0.8378,
+          "jsc": 15.6415,
+          "pce_pct": 17.9082,
+          "value": 1.2e+17,
+          "voc": 1.3665
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.0,
+          "delta_pct_of_default": 100.0,
+          "ff": 0.8378,
+          "jsc": 15.6415,
+          "pce_pct": 17.9082,
+          "value": 2e+17,
+          "voc": 1.3665
+        }
+      ],
+      "range": [
+        1000000000000000.0,
+        1e+18
+      ],
+      "range_class": "LITERATURE-SUPPORTED",
+      "scan_mode": "multiplicative",
+      "unit": "1/cm^3"
+    },
+    "perovskite_eg_ev": {
+      "category": "LITERATURE-DERIVED",
+      "default": 1.68,
+      "inert": false,
+      "inert_note": "",
+      "max_abs_delta_pce_pp": 2.5274,
+      "points": [
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -2.5274,
+          "delta_pct_of_default": -10.0,
+          "ff": 0.8362,
+          "jsc": 15.2735,
+          "pce_pct": 15.3807,
+          "value": 1.512,
+          "voc": 1.2043
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -1.9948,
+          "delta_pct_of_default": 10.0,
+          "ff": 0.8587,
+          "jsc": 12.1427,
+          "pce_pct": 15.9133,
+          "value": 1.848,
+          "voc": 1.5263
+        }
+      ],
+      "range": [
+        1.4,
+        2.0
+      ],
+      "range_class": "LITERATURE-SUPPORTED",
+      "scan_mode": "multiplicative",
+      "unit": "eV"
+    },
+    "perovskite_srh_lifetime_ns": {
+      "category": "LITERATURE-DERIVED",
+      "default": 1000.0,
+      "inert": true,
+      "inert_note": "no effect on any reported quantity over the scanned range: parameter is structurally inactive",
+      "max_abs_delta_pce_pp": 0.0,
+      "points": [
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -0.0,
+          "delta_pct_of_default": -50.0,
+          "ff": 0.8378,
+          "jsc": 15.6415,
+          "pce_pct": 17.9082,
+          "value": 500.0,
+          "voc": 1.3665
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -0.0,
+          "delta_pct_of_default": -20.0,
+          "ff": 0.8378,
+          "jsc": 15.6415,
+          "pce_pct": 17.9082,
+          "value": 800.0,
+          "voc": 1.3665
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -0.0,
+          "delta_pct_of_default": -10.0,
+          "ff": 0.8378,
+          "jsc": 15.6415,
+          "pce_pct": 17.9082,
+          "value": 900.0,
+          "voc": 1.3665
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.0,
+          "delta_pct_of_default": 10.0,
+          "ff": 0.8378,
+          "jsc": 15.6415,
+          "pce_pct": 17.9082,
+          "value": 1100.0,
+          "voc": 1.3665
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.0,
+          "delta_pct_of_default": 20.0,
+          "ff": 0.8378,
+          "jsc": 15.6415,
+          "pce_pct": 17.9082,
+          "value": 1200.0,
+          "voc": 1.3665
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.0,
+          "delta_pct_of_default": 100.0,
+          "ff": 0.8378,
+          "jsc": 15.6415,
+          "pce_pct": 17.9082,
+          "value": 2000.0,
+          "voc": 1.3665
+        }
+      ],
+      "range": [
+        10.0,
+        20000.0
+      ],
+      "range_class": "LITERATURE-SUPPORTED",
+      "scan_mode": "multiplicative",
+      "unit": "ns"
+    },
+    "perovskite_srv_cm_s": {
+      "category": "MODEL-ASSUMED",
+      "default": 1000.0,
+      "inert": true,
+      "inert_note": "no effect on any reported quantity over the scanned range: parameter is structurally inactive",
+      "max_abs_delta_pce_pp": 0.0,
+      "points": [
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.0,
+          "delta_pct_of_default": -50.0,
+          "ff": 0.8378,
+          "jsc": 15.6415,
+          "pce_pct": 17.9082,
+          "value": 500.0,
+          "voc": 1.3665
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.0,
+          "delta_pct_of_default": -20.0,
+          "ff": 0.8378,
+          "jsc": 15.6415,
+          "pce_pct": 17.9082,
+          "value": 800.0,
+          "voc": 1.3665
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.0,
+          "delta_pct_of_default": -10.0,
+          "ff": 0.8378,
+          "jsc": 15.6415,
+          "pce_pct": 17.9082,
+          "value": 900.0,
+          "voc": 1.3665
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -0.0,
+          "delta_pct_of_default": 10.0,
+          "ff": 0.8378,
+          "jsc": 15.6415,
+          "pce_pct": 17.9082,
+          "value": 1100.0,
+          "voc": 1.3665
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -0.0,
+          "delta_pct_of_default": 20.0,
+          "ff": 0.8378,
+          "jsc": 15.6415,
+          "pce_pct": 17.9082,
+          "value": 1200.0,
+          "voc": 1.3665
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -0.0,
+          "delta_pct_of_default": 100.0,
+          "ff": 0.8378,
+          "jsc": 15.6415,
+          "pce_pct": 17.9081,
+          "value": 2000.0,
+          "voc": 1.3665
+        }
+      ],
+      "range": [
+        1.0,
+        100000.0
+      ],
+      "range_class": "EXPLORATORY",
+      "scan_mode": "multiplicative",
+      "unit": "cm/s"
+    },
+    "perovskite_thickness_nm": {
+      "category": "MODEL-ASSUMED",
+      "default": 500.0,
+      "inert": false,
+      "inert_note": "",
+      "max_abs_delta_pce_pp": 5.1195,
+      "points": [
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -5.1195,
+          "delta_pct_of_default": -50.0,
+          "ff": 0.8533,
+          "jsc": 10.9988,
+          "pce_pct": 12.7887,
+          "value": 250.0,
+          "voc": 1.3626
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -1.4828,
+          "delta_pct_of_default": -20.0,
+          "ff": 0.8456,
+          "jsc": 14.2228,
+          "pce_pct": 16.4254,
+          "value": 400.0,
+          "voc": 1.3657
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -0.6188,
+          "delta_pct_of_default": -10.0,
+          "ff": 0.8419,
+          "jsc": 15.0313,
+          "pce_pct": 17.2894,
+          "value": 450.0,
+          "voc": 1.3662
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.5266,
+          "delta_pct_of_default": 10.0,
+          "ff": 0.8318,
+          "jsc": 16.2209,
+          "pce_pct": 18.4348,
+          "value": 550.0,
+          "voc": 1.3664
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.9516,
+          "delta_pct_of_default": 20.0,
+          "ff": 0.8247,
+          "jsc": 16.7344,
+          "pce_pct": 18.8598,
+          "value": 600.0,
+          "voc": 1.3666
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.4819,
+          "delta_pct_of_default": 100.0,
+          "ff": 0.8447,
+          "jsc": 15.934,
+          "pce_pct": 18.3901,
+          "value": 1000.0,
+          "voc": 1.3663
+        }
+      ],
+      "range": [
+        150.0,
+        1500.0
+      ],
+      "range_class": "EXPLORATORY",
+      "scan_mode": "multiplicative",
+      "unit": "nm"
+    },
+    "photon_recycling_gain_top": {
+      "category": "MODEL-ASSUMED",
+      "default": 0.0,
+      "inert": false,
+      "inert_note": "",
+      "max_abs_delta_pce_pp": 1.2513,
+      "points": [
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.2849,
+          "delta_pct_of_default": null,
+          "ff": 0.8391,
+          "jsc": 15.6415,
+          "pce_pct": 18.193,
+          "value": 1.0,
+          "voc": 1.3861
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.7368,
+          "delta_pct_of_default": null,
+          "ff": 0.8411,
+          "jsc": 15.6415,
+          "pce_pct": 18.645,
+          "value": 5.0,
+          "voc": 1.4172
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.9859,
+          "delta_pct_of_default": null,
+          "ff": 0.8423,
+          "jsc": 15.6415,
+          "pce_pct": 18.894,
+          "value": 10.0,
+          "voc": 1.4341
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 1.2513,
+          "delta_pct_of_default": null,
+          "ff": 0.8434,
+          "jsc": 15.6415,
+          "pce_pct": 19.1595,
+          "value": 20.0,
+          "voc": 1.4524
+        }
+      ],
+      "range": [
+        0.0,
+        20.0
+      ],
+      "range_class": "EXPLORATORY",
+      "scan_mode": "range-anchored (default is 0: multiplicative scan is degenerate)",
+      "unit": "1"
+    },
+    "radiative_efficiency_bottom": {
+      "category": "MODEL-ASSUMED",
+      "default": 0.0001,
+      "inert": false,
+      "inert_note": "",
+      "max_abs_delta_pce_pp": 0.2845,
+      "points": [
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -0.2845,
+          "delta_pct_of_default": -50.0,
+          "ff": 0.8361,
+          "jsc": 15.648,
+          "pce_pct": 17.6236,
+          "value": 5e-05,
+          "voc": 1.347
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -0.0915,
+          "delta_pct_of_default": -20.0,
+          "ff": 0.8373,
+          "jsc": 15.6436,
+          "pce_pct": 17.8166,
+          "value": 8e-05,
+          "voc": 1.3602
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -0.0432,
+          "delta_pct_of_default": -10.0,
+          "ff": 0.8376,
+          "jsc": 15.6425,
+          "pce_pct": 17.8649,
+          "value": 9e-05,
+          "voc": 1.3635
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.0391,
+          "delta_pct_of_default": 10.0,
+          "ff": 0.8381,
+          "jsc": 15.6406,
+          "pce_pct": 17.9472,
+          "value": 0.00011,
+          "voc": 1.3692
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.0747,
+          "delta_pct_of_default": 20.0,
+          "ff": 0.8383,
+          "jsc": 15.6398,
+          "pce_pct": 17.9829,
+          "value": 0.00012,
+          "voc": 1.3717
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.284,
+          "delta_pct_of_default": 100.0,
+          "ff": 0.8395,
+          "jsc": 15.635,
+          "pce_pct": 18.1922,
+          "value": 0.0002,
+          "voc": 1.3861
+        }
+      ],
+      "range": [
+        1e-06,
+        1.0
+      ],
+      "range_class": "EXPLORATORY",
+      "scan_mode": "multiplicative",
+      "unit": "1"
+    },
+    "radiative_efficiency_top": {
+      "category": "MODEL-ASSUMED",
+      "default": 0.02,
+      "inert": false,
+      "inert_note": "",
+      "max_abs_delta_pce_pp": 0.285,
+      "points": [
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -0.285,
+          "delta_pct_of_default": -50.0,
+          "ff": 0.8365,
+          "jsc": 15.6415,
+          "pce_pct": 17.6232,
+          "value": 0.01,
+          "voc": 1.3469
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -0.0917,
+          "delta_pct_of_default": -20.0,
+          "ff": 0.8374,
+          "jsc": 15.6415,
+          "pce_pct": 17.8164,
+          "value": 0.016,
+          "voc": 1.3602
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -0.0433,
+          "delta_pct_of_default": -10.0,
+          "ff": 0.8376,
+          "jsc": 15.6415,
+          "pce_pct": 17.8649,
+          "value": 0.018,
+          "voc": 1.3635
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.0392,
+          "delta_pct_of_default": 10.0,
+          "ff": 0.838,
+          "jsc": 15.6415,
+          "pce_pct": 17.9473,
+          "value": 0.022,
+          "voc": 1.3692
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.0749,
+          "delta_pct_of_default": 20.0,
+          "ff": 0.8382,
+          "jsc": 15.6415,
+          "pce_pct": 17.9831,
+          "value": 0.024,
+          "voc": 1.3717
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.2849,
+          "delta_pct_of_default": 100.0,
+          "ff": 0.8391,
+          "jsc": 15.6415,
+          "pce_pct": 18.193,
+          "value": 0.04,
+          "voc": 1.3861
+        }
+      ],
+      "range": [
+        0.0001,
+        1.0
+      ],
+      "range_class": "EXPLORATORY",
+      "scan_mode": "multiplicative",
+      "unit": "1"
+    },
+    "rs_ohm_cm2": {
+      "category": "MODEL-ASSUMED",
+      "default": 1.5,
+      "inert": false,
+      "inert_note": "",
+      "max_abs_delta_pce_pp": 0.3344,
+      "points": [
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.1673,
+          "delta_pct_of_default": -50.0,
+          "ff": 0.8457,
+          "jsc": 15.6376,
+          "pce_pct": 18.0755,
+          "value": 0.75,
+          "voc": 1.3668
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.0668,
+          "delta_pct_of_default": -20.0,
+          "ff": 0.841,
+          "jsc": 15.6399,
+          "pce_pct": 17.975,
+          "value": 1.2,
+          "voc": 1.3667
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.0334,
+          "delta_pct_of_default": -10.0,
+          "ff": 0.8394,
+          "jsc": 15.6407,
+          "pce_pct": 17.9416,
+          "value": 1.35,
+          "voc": 1.3666
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -0.0334,
+          "delta_pct_of_default": 10.0,
+          "ff": 0.8363,
+          "jsc": 15.6423,
+          "pce_pct": 17.8747,
+          "value": 1.65,
+          "voc": 1.3665
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -0.0669,
+          "delta_pct_of_default": 20.0,
+          "ff": 0.8347,
+          "jsc": 15.6431,
+          "pce_pct": 17.8413,
+          "value": 1.8,
+          "voc": 1.3664
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -0.3344,
+          "delta_pct_of_default": 100.0,
+          "ff": 0.8222,
+          "jsc": 15.6494,
+          "pce_pct": 17.5737,
+          "value": 3.0,
+          "voc": 1.3659
+        }
+      ],
+      "range": [
+        0.0,
+        20.0
+      ],
+      "range_class": "EXPLORATORY",
+      "scan_mode": "multiplicative",
+      "unit": "ohm*cm^2"
+    },
+    "rsh_ohm_cm2": {
+      "category": "MODEL-ASSUMED",
+      "default": 3000.0,
+      "inert": false,
+      "inert_note": "",
+      "max_abs_delta_pce_pp": 0.4774,
+      "points": [
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -0.4774,
+          "delta_pct_of_default": -50.0,
+          "ff": 0.8213,
+          "jsc": 15.5564,
+          "pce_pct": 17.4307,
+          "value": 1500.0,
+          "voc": 1.3642
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -0.1198,
+          "delta_pct_of_default": -20.0,
+          "ff": 0.8337,
+          "jsc": 15.6202,
+          "pce_pct": 17.7883,
+          "value": 2400.0,
+          "voc": 1.366
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -0.0533,
+          "delta_pct_of_default": -10.0,
+          "ff": 0.836,
+          "jsc": 15.6321,
+          "pce_pct": 17.8549,
+          "value": 2700.0,
+          "voc": 1.3663
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.0436,
+          "delta_pct_of_default": 10.0,
+          "ff": 0.8393,
+          "jsc": 15.6493,
+          "pce_pct": 17.9517,
+          "value": 3300.0,
+          "voc": 1.3667
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.0799,
+          "delta_pct_of_default": 20.0,
+          "ff": 0.8406,
+          "jsc": 15.6557,
+          "pce_pct": 17.9881,
+          "value": 3600.0,
+          "voc": 1.3669
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.2397,
+          "delta_pct_of_default": 100.0,
+          "ff": 0.846,
+          "jsc": 15.6841,
+          "pce_pct": 18.1479,
+          "value": 6000.0,
+          "voc": 1.3677
+        }
+      ],
+      "range": [
+        50.0,
+        1000000.0
+      ],
+      "range_class": "EXPLORATORY",
+      "scan_mode": "multiplicative",
+      "unit": "ohm*cm^2"
+    },
+    "silicon_doping_cm3": {
+      "category": "LITERATURE-DERIVED",
+      "default": 1e+16,
+      "inert": false,
+      "inert_note": "",
+      "max_abs_delta_pce_pp": 0.0009,
+      "points": [
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -0.0009,
+          "delta_pct_of_default": -50.0,
+          "ff": 0.8378,
+          "jsc": 15.6415,
+          "pce_pct": 17.9073,
+          "value": 5000000000000000.0,
+          "voc": 1.3665
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -0.0002,
+          "delta_pct_of_default": -20.0,
+          "ff": 0.8378,
+          "jsc": 15.6415,
+          "pce_pct": 17.9079,
+          "value": 8000000000000000.0,
+          "voc": 1.3665
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -0.0001,
+          "delta_pct_of_default": -10.0,
+          "ff": 0.8378,
+          "jsc": 15.6415,
+          "pce_pct": 17.9081,
+          "value": 9000000000000000.0,
+          "voc": 1.3665
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.0001,
+          "delta_pct_of_default": 10.0,
+          "ff": 0.8378,
+          "jsc": 15.6415,
+          "pce_pct": 17.9082,
+          "value": 1.1e+16,
+          "voc": 1.3665
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.0001,
+          "delta_pct_of_default": 20.0,
+          "ff": 0.8378,
+          "jsc": 15.6415,
+          "pce_pct": 17.9083,
+          "value": 1.2e+16,
+          "voc": 1.3665
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.0004,
+          "delta_pct_of_default": 100.0,
+          "ff": 0.8378,
+          "jsc": 15.6415,
+          "pce_pct": 17.9086,
+          "value": 2e+16,
+          "voc": 1.3666
+        }
+      ],
+      "range": [
+        100000000000000.0,
+        1e+17
+      ],
+      "range_class": "LITERATURE-SUPPORTED",
+      "scan_mode": "multiplicative",
+      "unit": "1/cm^3"
+    },
+    "silicon_light_trapping": {
+      "category": "MODEL-ASSUMED",
+      "default": 1.0,
+      "inert": false,
+      "inert_note": "",
+      "max_abs_delta_pce_pp": 0.0981,
+      "points": [
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.0158,
+          "delta_pct_of_default": 10.0,
+          "ff": 0.8384,
+          "jsc": 15.6411,
+          "pce_pct": 17.924,
+          "value": 1.1,
+          "voc": 1.3668
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.0295,
+          "delta_pct_of_default": 20.0,
+          "ff": 0.839,
+          "jsc": 15.6408,
+          "pce_pct": 17.9377,
+          "value": 1.2,
+          "voc": 1.367
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.0981,
+          "delta_pct_of_default": 100.0,
+          "ff": 0.8415,
+          "jsc": 15.6391,
+          "pce_pct": 18.0063,
+          "value": 2.0,
+          "voc": 1.3682
+        }
+      ],
+      "range": [
+        1.0,
+        30.0
+      ],
+      "range_class": "EXPLORATORY",
+      "scan_mode": "multiplicative",
+      "unit": "1"
+    },
+    "silicon_thickness_um": {
+      "category": "EXPERIMENTALLY-CONSTRAINED",
+      "default": 260.0,
+      "inert": false,
+      "inert_note": "",
+      "max_abs_delta_pce_pp": 0.1496,
+      "points": [
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -0.1496,
+          "delta_pct_of_default": -50.0,
+          "ff": 0.8319,
+          "jsc": 15.6454,
+          "pce_pct": 17.7586,
+          "value": 130.0,
+          "voc": 1.3645
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -0.0408,
+          "delta_pct_of_default": -20.0,
+          "ff": 0.8362,
+          "jsc": 15.6425,
+          "pce_pct": 17.8674,
+          "value": 208.0,
+          "voc": 1.3659
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -0.0186,
+          "delta_pct_of_default": -10.0,
+          "ff": 0.8371,
+          "jsc": 15.642,
+          "pce_pct": 17.8896,
+          "value": 234.0,
+          "voc": 1.3662
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.0158,
+          "delta_pct_of_default": 10.0,
+          "ff": 0.8384,
+          "jsc": 15.6411,
+          "pce_pct": 17.924,
+          "value": 286.0,
+          "voc": 1.3668
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.0295,
+          "delta_pct_of_default": 20.0,
+          "ff": 0.839,
+          "jsc": 15.6408,
+          "pce_pct": 17.9376,
+          "value": 312.0,
+          "voc": 1.367
+        }
+      ],
+      "range": [
+        60.0,
+        400.0
+      ],
+      "range_class": "EXPERIMENTALLY-CONSTRAINED",
+      "scan_mode": "multiplicative",
+      "unit": "um"
+    },
+    "tco_free_carrier_k": {
+      "category": "LITERATURE-DERIVED",
+      "default": 0.02,
+      "inert": false,
+      "inert_note": "",
+      "max_abs_delta_pce_pp": 0.0334,
+      "points": [
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.0168,
+          "delta_pct_of_default": -50.0,
+          "ff": 0.8379,
+          "jsc": 15.6545,
+          "pce_pct": 17.9249,
+          "value": 0.01,
+          "voc": 1.3666
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.0067,
+          "delta_pct_of_default": -20.0,
+          "ff": 0.8378,
+          "jsc": 15.6467,
+          "pce_pct": 17.9149,
+          "value": 0.016,
+          "voc": 1.3665
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.0034,
+          "delta_pct_of_default": -10.0,
+          "ff": 0.8378,
+          "jsc": 15.6441,
+          "pce_pct": 17.9115,
+          "value": 0.018,
+          "voc": 1.3665
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -0.0033,
+          "delta_pct_of_default": 10.0,
+          "ff": 0.8378,
+          "jsc": 15.6389,
+          "pce_pct": 17.9048,
+          "value": 0.022,
+          "voc": 1.3665
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -0.0067,
+          "delta_pct_of_default": 20.0,
+          "ff": 0.8378,
+          "jsc": 15.6363,
+          "pce_pct": 17.9015,
+          "value": 0.024,
+          "voc": 1.3665
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -0.0334,
+          "delta_pct_of_default": 100.0,
+          "ff": 0.8377,
+          "jsc": 15.6155,
+          "pce_pct": 17.8747,
+          "value": 0.04,
+          "voc": 1.3664
+        }
+      ],
+      "range": [
+        0.0,
+        0.2
+      ],
+      "range_class": "LITERATURE-SUPPORTED",
+      "scan_mode": "multiplicative",
+      "unit": "1"
+    },
+    "tco_uv_absorption_k": {
+      "category": "LITERATURE-DERIVED",
+      "default": 0.6,
+      "inert": false,
+      "inert_note": "",
+      "max_abs_delta_pce_pp": 0.1304,
+      "points": [
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.0715,
+          "delta_pct_of_default": -50.0,
+          "ff": 0.8376,
+          "jsc": 15.7073,
+          "pce_pct": 17.9797,
+          "value": 0.3,
+          "voc": 1.3666
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.028,
+          "delta_pct_of_default": -20.0,
+          "ff": 0.8377,
+          "jsc": 15.6673,
+          "pce_pct": 17.9362,
+          "value": 0.48,
+          "voc": 1.3666
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": 0.0139,
+          "delta_pct_of_default": -10.0,
+          "ff": 0.8378,
+          "jsc": 15.6543,
+          "pce_pct": 17.9221,
+          "value": 0.54,
+          "voc": 1.3665
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -0.0137,
+          "delta_pct_of_default": 10.0,
+          "ff": 0.8379,
+          "jsc": 15.6289,
+          "pce_pct": 17.8944,
+          "value": 0.66,
+          "voc": 1.3665
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -0.0273,
+          "delta_pct_of_default": 20.0,
+          "ff": 0.8379,
+          "jsc": 15.6164,
+          "pce_pct": 17.8808,
+          "value": 0.72,
+          "voc": 1.3665
+        },
+        {
+          "delta_junction_t_k": 0.0,
+          "delta_pce_pp": -0.1304,
+          "delta_pct_of_default": 100.0,
+          "ff": 0.8383,
+          "jsc": 15.522,
+          "pce_pct": 17.7777,
+          "value": 1.2,
+          "voc": 1.3663
+        }
+      ],
+      "range": [
+        0.0,
+        2.0
+      ],
+      "range_class": "LITERATURE-SUPPORTED",
+      "scan_mode": "multiplicative",
+      "unit": "1"
+    },
+    "thermal_management_gain": {
+      "category": "MODEL-ASSUMED",
+      "default": 0.0,
+      "inert": false,
+      "inert_note": "",
+      "max_abs_delta_pce_pp": 2.333,
+      "points": [
+        {
+          "delta_junction_t_k": -1.5,
+          "delta_pce_pp": 0.1167,
+          "delta_pct_of_default": null,
+          "ff": 0.8388,
+          "jsc": 15.6401,
+          "pce_pct": 18.0248,
+          "value": 0.05,
+          "voc": 1.3739
+        },
+        {
+          "delta_junction_t_k": -7.5,
+          "delta_pce_pp": 0.5845,
+          "delta_pct_of_default": null,
+          "ff": 0.8429,
+          "jsc": 15.6346,
+          "pce_pct": 18.4926,
+          "value": 0.25,
+          "voc": 1.4033
+        },
+        {
+          "delta_junction_t_k": -15.0,
+          "delta_pce_pp": 1.1674,
+          "delta_pct_of_default": null,
+          "ff": 0.8477,
+          "jsc": 15.6278,
+          "pce_pct": 19.0756,
+          "value": 0.5,
+          "voc": 1.4399
+        },
+        {
+          "delta_junction_t_k": -30.0,
+          "delta_pce_pp": 2.333,
+          "delta_pct_of_default": null,
+          "ff": 0.8567,
+          "jsc": 15.6141,
+          "pce_pct": 20.2412,
+          "value": 1.0,
+          "voc": 1.5131
+        }
+      ],
+      "range": [
+        0.0,
+        1.0
+      ],
+      "range_class": "EXPLORATORY",
+      "scan_mode": "range-anchored (default is 0: multiplicative scan is degenerate)",
+      "unit": "1"
+    },
+    "thermal_resistance_k_cm2_w": {
+      "category": "MODEL-ASSUMED",
+      "default": 0.3,
+      "inert": false,
+      "inert_note": "",
+      "max_abs_delta_pce_pp": 2.3912,
+      "points": [
+        {
+          "delta_junction_t_k": -15.0,
+          "delta_pce_pp": 1.1674,
+          "delta_pct_of_default": -50.0,
+          "ff": 0.8477,
+          "jsc": 15.6278,
+          "pce_pct": 19.0756,
+          "value": 0.15,
+          "voc": 1.4399
+        },
+        {
+          "delta_junction_t_k": -6.0,
+          "delta_pce_pp": 0.4676,
+          "delta_pct_of_default": -20.0,
+          "ff": 0.8419,
+          "jsc": 15.636,
+          "pce_pct": 18.3758,
+          "value": 0.24,
+          "voc": 1.396
+        },
+        {
+          "delta_junction_t_k": -3.0,
+          "delta_pce_pp": 0.2337,
+          "delta_pct_of_default": -10.0,
+          "ff": 0.8399,
+          "jsc": 15.6388,
+          "pce_pct": 18.1418,
+          "value": 0.27,
+          "voc": 1.3813
+        },
+        {
+          "delta_junction_t_k": 3.0,
+          "delta_pce_pp": -0.2337,
+          "delta_pct_of_default": 10.0,
+          "ff": 0.8358,
+          "jsc": 15.6443,
+          "pce_pct": 17.6745,
+          "value": 0.33,
+          "voc": 1.3518
+        },
+        {
+          "delta_junction_t_k": 6.0,
+          "delta_pce_pp": -0.468,
+          "delta_pct_of_default": 20.0,
+          "ff": 0.8337,
+          "jsc": 15.647,
+          "pce_pct": 17.4402,
+          "value": 0.36,
+          "voc": 1.337
+        },
+        {
+          "delta_junction_t_k": 30.0,
+          "delta_pce_pp": -2.3912,
+          "delta_pct_of_default": 100.0,
+          "ff": 0.8143,
+          "jsc": 15.6701,
+          "pce_pct": 15.5169,
+          "value": 0.6,
+          "voc": 1.2161
+        }
+      ],
+      "range": [
+        0.05,
+        2.0
+      ],
+      "range_class": "EXPLORATORY",
+      "scan_mode": "multiplicative",
+      "unit": "K*cm^2/mW"
+    }
+  },
+  "wall_clock_s": 123.28
+}

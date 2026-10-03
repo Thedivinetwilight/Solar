@@ -49,7 +49,9 @@ def test_tandem_baseline_regression_pin():
       term applied no mA<->A conversion and was numerically inert; the fix
       *lowers* the efficiency, so it is not a PCE-chasing change)
     """
-    o = evaluate_tandem(ParamSet.defaults())
+    ps = ParamSet.defaults()
+    # (a) fixed-temperature diagnostic (no self-heating)
+    o = evaluate_tandem(ps, self_heating=False)
     assert o.pce_pct == pytest.approx(20.2412, abs=0.002)
     assert o.jsc_ma_cm2 == pytest.approx(15.6141, abs=0.002)
     assert o.voc_v == pytest.approx(1.5131, abs=0.001)
@@ -57,6 +59,36 @@ def test_tandem_baseline_regression_pin():
     assert o.j_top_sc == pytest.approx(15.7266, abs=0.002)
     assert o.j_bottom_sc == pytest.approx(19.8030, abs=0.002)
     assert o.coupling_converged
+    # (b) the default configuration includes one-sun self-heating: the junction
+    # runs 30 K above ambient under the conservative all-incident-power closure
+    hot = evaluate_tandem(ps)
+    assert hot.detail["thermal"]["delta_t_k"] == pytest.approx(30.0, abs=0.01)
+    assert hot.pce_pct == pytest.approx(17.9082, abs=0.002)
+    assert hot.pce_pct < o.pce_pct     # heating can only cost efficiency
+
+
+def test_thermal_mechanism_is_wired_and_directional():
+    """Mechanism C: thermal management must reduce the junction temperature and
+    recover efficiency; the heat-fraction parameter must scale the rise."""
+    ps = ParamSet.defaults()
+    base = evaluate_tandem(ps)
+    cooled = evaluate_tandem(ps.with_mapping({"thermal_management_gain": 0.6}))
+    assert cooled.detail["thermal"]["delta_t_k"] == pytest.approx(12.0, abs=0.01)
+    assert cooled.pce_pct > base.pce_pct
+    half_heat = evaluate_tandem(ps.with_mapping({"absorption_heat_fraction": 0.5}))
+    assert half_heat.detail["thermal"]["delta_t_k"] == pytest.approx(15.0, abs=0.01)
+
+
+def test_luminescent_coupling_is_bounded_and_directionally_honest():
+    """Top->bottom coupling cannot relieve a TOP-limited tandem: the effect must
+    stay small (this pins the V1.9 coupling-scale bug which produced PCE=141 %)."""
+    ps = ParamSet.defaults()
+    base = evaluate_tandem(ps, self_heating=False)
+    coupled = evaluate_tandem(ps.with_mapping(
+        {"luminescent_coupling_top_to_bottom": 0.5}), self_heating=False)
+    assert abs(coupled.pce_pct - base.pce_pct) < 0.1
+    assert base.current_matching_ratio > 1.0      # bottom has the surplus
+    assert coupled.pce_pct < 25.0                 # no runaway: fail loudly if it returns
 
 
 def test_rsh_is_not_inert_in_the_tandem_solve():

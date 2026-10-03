@@ -17,8 +17,12 @@
       "sha256": "0653972bf62f13c38b3c705e682e525d1c2c82cce2b77db8dba61d95971d1667"
     },
     "data/v19_calibration.json": {
-      "bytes": 11908,
-      "sha256": "d4772acdd8d4479545d0324b80677302574ca0c02336f5fb0e908ab46cce997a"
+      "bytes": 7206,
+      "sha256": "0e50e82787dee2aafc10d691fdcacb82e7d8b93cfb25eca701a45bc923fa8f1e"
+    },
+    "data/v19_oat_sensitivity.json": {
+      "bytes": 40552,
+      "sha256": "8bc3bdb5ac5321c88695daed8b5168fb65ce6456ceb732b720ead6d09600ab19"
     }
   },
   "generated_by": "tools/v19_calibrate_twin.py",
