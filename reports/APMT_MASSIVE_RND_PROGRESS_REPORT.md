@@ -1173,18 +1173,23 @@ V1.9-C commits (all on `arena/01a102e7-solar`, all pushed):
 | `V1.9-C4` = `659691c` | thermal energy-balance rebuild + validity envelope + 454 K investigation (`apmt/device/thermal.py`, `tests/test_v19_thermal.py`, `tools/v19_thermal_investigation.py`, `data/v19_thermal_investigation.json`) |
 | `V1.9-C5` = `de4bd26` | bottom->top coupling, rear-reflection optics, Levels 0-5, concentration unit fix (`apmt/multifidelity/levels.py`, `apmt/optics/*`, `apmt/materials/silicon.py`, `apmt/params/registry.py`, tests) |
 | `V1.9-C6` = `a5aee30` | engine campaign + physics digest (`tools/v19_engine_campaign.py`, `apmt/repro/digest.py`, `data/v19_engine_campaign.json`, `tests/test_v19_batch_surrogate.py`) |
-| `V1.9-C7` = `(this commit)` | pins, CI digest verification, README twin row, master report PART V1.9-C |
-| `V1.9-C8` = `(next commit)` | report commit-hash record + regenerated `reports/.report_sha256` |
+| `V1.9-C7` = `84dab7b` | pins, CI digest verification, README twin row, master report PART V1.9-C |
+| `V1.9-C8` = `(this commit)` | report commit-hash record + regenerated `reports/.report_sha256` |
 
 *(Full hashes are listed in the table; `V1.9-C8` is the self-referencing record
 commit, so its own hash can only appear in `git log` and in the cycle's final
 chat block. The V1.9-A/V1.9-B/V1.9-C1 commits below `V1.9-C2` are untouched.)*
 
-**Verification performed at the end of the cycle:** full suite `142 passed, 1
-skipped` (the skip is the explicit "manuscript PDF absent" M2 re-render check);
-`tools/ci_checks.py` — pins, determinism, provenance, gate, artifact consistency
-and git-clean; report sha256 regenerated in `reports/.report_sha256`; working tree
-clean; remote branch checked with `git ls-remote`.
+**Verification performed at the end of the cycle:**
+
+| Check | Result |
+| --- | --- |
+| full test suite | **142 passed, 1 skipped** in 81 s (the skip is the explicit "manuscript PDF absent" M2 re-render check) |
+| `tools/ci_checks.py` | **6/6 PASS** (8 artifact sha256 pins + 1 physics digest, determinism re-run, provenance audit, gate evaluator, report consistency, git-clean) |
+| report sha256 | `11f317e2…` as committed in `V1.9-C7`; the sha256 of the file as committed in `V1.9-C8` is recorded in `reports/.report_sha256` |
+| working tree | clean after `V1.9-C8` (`git status --porcelain` empty) |
+| remote | verified with `git ls-remote origin` against the local commit hash |
+| test side effects | the suite does not modify `data/` or `manifests/` (the CI git-clean check proves it on every run) |
 
 **V1.9-D readiness.** Ready, with the interfaces in place:
 `batch_evaluate`/`dataset` (N→N, guarded, surrogate-ready), level selection with
