@@ -1,0 +1,588 @@
+{
+  "generated_by": "tools/v19_thermal_investigation.py",
+  "heat_ledger": {
+    "absorbed_mw_cm2": 68.4960695558816,
+    "consequence": "the junction temperature is an UPPER bound for a given thermal resistance, because photon escape above the gap is not credited as a cooling channel",
+    "electrical_mw_cm2": 0.19263302208185576,
+    "estimate_thermalisation_mw_cm2": 0.0,
+    "known_conservative": true,
+    "note": "the model does NOT resolve thermalisation vs non-radiative recombination vs luminescent escape separately; all of it is heat",
+    "total_heat_mw_cm2": 68.30343653379975
+  },
+  "label": "PRE-GATE / MODEL-OBSERVED / EXPLORATORY",
+  "legacy_454k_reproduction": {
+    "conclusion": "The 454 K corner is reproducible under the V1.9-B closure (R_th ~ 1.556 K cm2/mW gives 453.75 K and 1.97 % PCE) and is NOT a numerical artefact: it is the direct consequence of a closed energy balance that had no radiative cooling path. With the radiative term the same R_th gives 337.6 K and 17.17 % PCE. The legacy point also lies OUTSIDE the electrical model's validity window (>400 K), so its 'efficiency' was an extrapolation; V1.9-C refuses to report such points (ModelValidityError -> INVALID solve).",
+    "energy_balance_closure": [
+      {
+        "junction_k": 310.74276603649696,
+        "pce_pct": 19.263302208185575,
+        "r_th": 0.3,
+        "radiative_share": 0.14740061569234375
+      },
+      {
+        "junction_k": 329.2057321890658,
+        "pce_pct": 17.82614787584531,
+        "r_th": 1.0,
+        "radiative_share": 0.38709747755982166
+      },
+      {
+        "junction_k": 337.6049704239636,
+        "pce_pct": 17.169908772415123,
+        "r_th": 1.556,
+        "radiative_share": 0.5059713597271888
+      },
+      {
+        "junction_k": 342.20710732807646,
+        "pce_pct": 16.808439414258597,
+        "r_th": 2.0,
+        "radiative_share": 0.5738141035751181
+      }
+    ],
+    "legacy_closure": [
+      {
+        "junction_k": 328.15,
+        "outside_electrical_envelope": false,
+        "pce_pct": 17.90846626205166,
+        "r_th": 0.3,
+        "status": "evaluated"
+      },
+      {
+        "junction_k": 398.15,
+        "outside_electrical_envelope": false,
+        "pce_pct": 9.75430809688394,
+        "r_th": 1.0,
+        "status": "evaluated"
+      },
+      {
+        "junction_k": 453.75,
+        "outside_electrical_envelope": true,
+        "pce_pct": 1.9684972746360232,
+        "r_th": 1.556,
+        "status": "evaluated"
+      },
+      {
+        "junction_k": 498.15,
+        "outside_electrical_envelope": true,
+        "pce_pct": null,
+        "r_th": 2.0,
+        "status": "SubcellNoVocError: tandem short-circuit current is non-positive at 498.1 K (J_top 15.73, J_bottom -20.05 mA/c"
+      }
+    ],
+    "r_th_for_exactly_454K": 1.5585000000000002,
+    "v19b_claim": "the LHS envelope contains corners where the twin returns PCE ~1 % at a junction temperature of ~454 K"
+  },
+  "legacy_vs_balance": {
+    "balance": [
+      {
+        "case": "default_r_th",
+        "conduction_mw_cm2": 41.97588678832328,
+        "delta_t_k": 12.592766036496982,
+        "equivalent_legacy_temperature_k": 312.91983020430877,
+        "heat_load_mw_cm2": 49.232767347696026,
+        "junction_k": 310.74276603649696,
+        "pce_pct": 19.263302208185575,
+        "r_th_effective": 0.3,
+        "radiative_mw_cm2": 7.256940219288312,
+        "radiative_share": 0.14740061569234375
+      },
+      {
+        "case": "max_r_th",
+        "conduction_mw_cm2": 22.028553664038242,
+        "delta_t_k": 44.057107328076484,
+        "equivalent_legacy_temperature_k": 401.525260283246,
+        "heat_load_mw_cm2": 51.687630141623,
+        "junction_k": 342.20710732807646,
+        "pce_pct": 16.808439414258597,
+        "r_th_effective": 2.0,
+        "radiative_mw_cm2": 29.659091155637658,
+        "radiative_share": 0.5738141035751181
+      }
+    ],
+    "balance_closure_rule": "(Tj-T_amb)/R_th,eff + eps*sigma*(Tj^4-T_amb^4) = f_heat*absorbed - P_elec(Tj)",
+    "legacy": {
+      "r_th_needed_for_454K": 1.5585000000000002,
+      "temperature_at_default_r_th_k": 328.15,
+      "temperature_at_max_r_th_k": 498.15
+    },
+    "legacy_closure_rule": "Tj = T_amb + R_th,eff * (irradiance * 1 sun * absorption_heat_fraction); no radiative term",
+    "radiative_explanation": {
+      "arithmetic": "at 498 K a blackbody-like front surface radiates 273.9 mW/cm^2 = 274 % of the heat load; the conduction-only closure cannot reach that temperature because that power would have to be conducted instead",
+      "conduction_only_temperature_would_be_k": 245.9688000242541,
+      "legacy_heat_load_mw_cm2": 100.0,
+      "legacy_temperature_k": 498.15,
+      "radiative_fraction_of_heat_load": 2.739373332524862,
+      "radiative_loss_at_that_temperature_mw_cm2": 273.9373332524862
+    },
+    "registered_defaults": {
+      "absorption_heat_fraction": 1.0,
+      "registry_range": [
+        0.05,
+        2.0
+      ],
+      "thermal_emissivity": 0.9,
+      "thermal_management_gain": 0.0,
+      "thermal_resistance_k_cm2_w": 0.3
+    },
+    "verdict": {
+      "genuine_extreme": "the registered upper bound R_th = 2.0 K cm^2/mW is still an extreme, but the solved balance keeps the junction below ~343 K at one sun",
+      "missing_pathway": "the V1.9-B closure had no radiative cooling path at all",
+      "numerical": false,
+      "range_recommendation": "keep the registered range (it is now bounded by physics, not by a missing pathway); flag the upper bound EXPLORATORY in the registry provenance",
+      "reachable": false
+    }
+  },
+  "pathway_inventory": {
+    "absorbed_optical_mw_cm2": 68.4960695558816,
+    "check_absorbed_minus_electrical": 68.30343653379975,
+    "conduction_mw_cm2": 41.97588678832328,
+    "conduction_share": 0.8526005961005084,
+    "d_heat_dt_mw_cm2_k": 0.07777516867108858,
+    "d_loss_dt_mw_cm2_k": 3.9458491660243253,
+    "delta_t_k": 12.592766036496982,
+    "extracted_electrical_mw_cm2": 0.19263302208185576,
+    "heat_load_formula": "f_heat * absorbed - P_elec, f_heat = absorption_heat_fraction",
+    "heat_load_mw_cm2": 49.232767347696026,
+    "junction_k": 310.74276603649696,
+    "pathways_absent": [
+      "convective/wind cooling",
+      "module rear radiation",
+      "encapsulant/glass thermal mass (steady state only)",
+      "temperature-dependent optical constants",
+      "non-radiative recombination heat resolved separately"
+    ],
+    "radiative_mw_cm2": 7.256940219288312,
+    "radiative_share": 0.14740061569234375,
+    "residual_mw_cm2": 5.965991556422523e-05,
+    "stability_margin_mw_cm2_k": 3.8680739973532368
+  },
+  "stability": {
+    "all_points_valid": false,
+    "note": "stability requires d(loss)/dT > d(heat)/dT; P_elec falls with T so Q rises slowly, while the loss term rises at ~1/R_th plus the T^3 radiative slope",
+    "rows": [
+      {
+        "dheat_dt_worst_mw_cm2_k": 0.017166798833933995,
+        "dloss_dt_at_equilibrium": 20.542468342064343,
+        "junction_k": 298.4145906174445,
+        "monotone_residual": true,
+        "r_th": 0.05,
+        "stability_margin": 20.52530154323041,
+        "suns": 0.1,
+        "valid": true
+      },
+      {
+        "dheat_dt_worst_mw_cm2_k": 0.017166798833933995,
+        "dloss_dt_at_equilibrium": 3.8820321231212045,
+        "junction_k": 299.5527114110174,
+        "monotone_residual": true,
+        "r_th": 0.3,
+        "stability_margin": 3.8648653242872704,
+        "suns": 0.1,
+        "valid": true
+      },
+      {
+        "dheat_dt_worst_mw_cm2_k": 0.017166798833933995,
+        "dloss_dt_at_equilibrium": 1.069664906785028,
+        "junction_k": 303.32048586564554,
+        "monotone_residual": true,
+        "r_th": 2.0,
+        "stability_margin": 1.052498107951094,
+        "suns": 0.1,
+        "valid": true
+      },
+      {
+        "dheat_dt_worst_mw_cm2_k": 0.18181821705494472,
+        "dloss_dt_at_equilibrium": 20.553961409527485,
+        "junction_k": 300.50734494566217,
+        "monotone_residual": true,
+        "r_th": 0.05,
+        "stability_margin": 20.37214319247254,
+        "suns": 1.0,
+        "valid": true
+      },
+      {
+        "dheat_dt_worst_mw_cm2_k": 0.18181821705494472,
+        "dloss_dt_at_equilibrium": 3.9458491660243253,
+        "junction_k": 310.74276603649696,
+        "monotone_residual": true,
+        "r_th": 0.3,
+        "stability_margin": 3.7640309489693804,
+        "suns": 1.0,
+        "valid": true
+      },
+      {
+        "dheat_dt_worst_mw_cm2_k": 0.18181821705494472,
+        "dloss_dt_at_equilibrium": 1.3180527576493626,
+        "junction_k": 342.20710732807646,
+        "monotone_residual": true,
+        "r_th": 2.0,
+        "stability_margin": 1.1362345405944179,
+        "suns": 1.0,
+        "valid": true
+      },
+      {
+        "dheat_dt_worst_mw_cm2_k": 0.863347790013626,
+        "dloss_dt_at_equilibrium": 20.608227103129188,
+        "junction_k": 310.01581107639635,
+        "monotone_residual": true,
+        "r_th": 0.05,
+        "stability_margin": 19.74487931311556,
+        "suns": 5.0,
+        "valid": true
+      },
+      {
+        "dheat_dt_worst_mw_cm2_k": 0.863347790013626,
+        "dloss_dt_at_equilibrium": 4.31056798999541,
+        "junction_k": 363.10163765850444,
+        "monotone_residual": true,
+        "r_th": 0.3,
+        "stability_margin": 3.4472201999817838,
+        "suns": 5.0,
+        "valid": true
+      },
+      {
+        "r_th": 2.0,
+        "reason": "ModelValidityError: converged junction temperature 487.5 K lies outside the electrical model's registered validity window [220.0, 400.0] K (level L4, 5 sun); the electrical parameterisation (Varshni bandgaps, n_i, SRH slab, calibrated J0 budget) is not defined beyond this range",
+        "suns": 5.0,
+        "valid": false
+      }
+    ],
+    "stable_everywhere": true
+  },
+  "sweep": {
+    "hottest_point": {
+      "absorbed_mw_cm2": 136.9921391117632,
+      "converged": true,
+      "delta_t_k": 83.8835775963799,
+      "heat_load_mw_cm2": 110.32266260843878,
+      "junction_k": 382.03357759637987,
+      "pce_pct": 13.334738251662218,
+      "r_th": 2.0,
+      "radiative_share": 0.6198268135593356,
+      "residual_mw_cm2": 7.061772143401868e-05,
+      "suns": 2.0,
+      "valid": true
+    },
+    "max_rise_k": 83.8835775963799,
+    "n_invalid_outside_electrical_envelope": 3,
+    "note": "no clipping anywhere: the sweep reports whatever the solved balance gives, including at the registered extremes; corners whose equilibrium temperature leaves the electrical model's validity window are reported as INVALID rather than extrapolated",
+    "rows": [
+      {
+        "absorbed_mw_cm2": 34.2480347779408,
+        "converged": true,
+        "delta_t_k": 1.199372866663623,
+        "heat_load_mw_cm2": 24.640273955103627,
+        "junction_k": 299.3493728666636,
+        "pce_pct": 19.21552164567435,
+        "r_th": 0.05,
+        "radiative_share": 0.026493970547420743,
+        "residual_mw_cm2": 2.070615725102698e-06,
+        "suns": 0.5,
+        "valid": true
+      },
+      {
+        "absorbed_mw_cm2": 34.2480347779408,
+        "converged": true,
+        "delta_t_k": 3.425710499693423,
+        "heat_load_mw_cm2": 24.723607295582987,
+        "junction_k": 301.5757104996934,
+        "pce_pct": 19.048854964715634,
+        "r_th": 0.15,
+        "radiative_share": 0.0762667509657533,
+        "residual_mw_cm2": 5.190296047530296e-05,
+        "suns": 0.5,
+        "valid": true
+      },
+      {
+        "absorbed_mw_cm2": 34.2480347779408,
+        "converged": true,
+        "delta_t_k": 6.380896488576411,
+        "heat_load_mw_cm2": 24.834301400032285,
+        "junction_k": 304.5308964885764,
+        "pce_pct": 18.827466755817035,
+        "r_th": 0.3,
+        "radiative_share": 0.14353736154643387,
+        "residual_mw_cm2": 3.6606986313358902e-06,
+        "suns": 0.5,
+        "valid": true
+      },
+      {
+        "absorbed_mw_cm2": 34.2480347779408,
+        "converged": true,
+        "delta_t_k": 11.17264404389931,
+        "heat_load_mw_cm2": 25.0140649470226,
+        "junction_k": 309.3226440438993,
+        "pce_pct": 18.467939661836404,
+        "r_th": 0.6,
+        "radiative_share": 0.25557772395909784,
+        "residual_mw_cm2": 4.6245601339478526e-05,
+        "suns": 0.5,
+        "valid": true
+      },
+      {
+        "absorbed_mw_cm2": 34.2480347779408,
+        "converged": true,
+        "delta_t_k": 17.732154488563424,
+        "heat_load_mw_cm2": 25.260639067498083,
+        "junction_k": 315.8821544885634,
+        "pce_pct": 17.974791420885435,
+        "r_th": 1.2,
+        "radiative_share": 0.4150274241911396,
+        "residual_mw_cm2": 1.4305243904999543e-05,
+        "suns": 0.5,
+        "valid": true
+      },
+      {
+        "absorbed_mw_cm2": 34.2480347779408,
+        "converged": true,
+        "delta_t_k": 23.000106866900865,
+        "heat_load_mw_cm2": 25.459109881614154,
+        "junction_k": 321.15010686690084,
+        "pce_pct": 17.577849792653296,
+        "r_th": 2.0,
+        "radiative_share": 0.5482933284391132,
+        "residual_mw_cm2": 3.64792362006483e-06,
+        "suns": 0.5,
+        "valid": true
+      },
+      {
+        "absorbed_mw_cm2": 68.4960695558816,
+        "converged": true,
+        "delta_t_k": 2.3573449456621915,
+        "heat_load_mw_cm2": 48.43747496364809,
+        "junction_k": 300.50734494566217,
+        "pce_pct": 20.05859459223351,
+        "r_th": 0.05,
+        "radiative_share": 0.02664449978524724,
+        "residual_mw_cm2": 1.6240862578342785e-05,
+        "suns": 1.0,
+        "valid": true
+      },
+      {
+        "absorbed_mw_cm2": 68.4960695558816,
+        "converged": true,
+        "delta_t_k": 6.750115494279555,
+        "heat_load_mw_cm2": 48.77866226897459,
+        "junction_k": 304.90011549427953,
+        "pce_pct": 19.71740728690701,
+        "r_th": 0.15,
+        "radiative_share": 0.07744978070202037,
+        "residual_mw_cm2": 4.38855910545044e-06,
+        "suns": 1.0,
+        "valid": true
+      },
+      {
+        "absorbed_mw_cm2": 68.4960695558816,
+        "converged": true,
+        "delta_t_k": 12.592766036496982,
+        "heat_load_mw_cm2": 49.232767347696026,
+        "junction_k": 310.74276603649696,
+        "pce_pct": 19.263302208185575,
+        "r_th": 0.3,
+        "radiative_share": 0.14740061569234375,
+        "residual_mw_cm2": 5.965991556422523e-05,
+        "suns": 1.0,
+        "valid": true
+      },
+      {
+        "absorbed_mw_cm2": 68.4960695558816,
+        "converged": true,
+        "delta_t_k": 22.005258512447654,
+        "heat_load_mw_cm2": 49.964925800659614,
+        "junction_k": 320.15525851244763,
+        "pce_pct": 18.53114375522199,
+        "r_th": 0.6,
+        "radiative_share": 0.2659769720709081,
+        "residual_mw_cm2": 2.4727626843912276e-05,
+        "suns": 1.0,
+        "valid": true
+      },
+      {
+        "absorbed_mw_cm2": 68.4960695558816,
+        "converged": true,
+        "delta_t_k": 34.51748811888831,
+        "heat_load_mw_cm2": 50.94003046487686,
+        "junction_k": 332.6674881188883,
+        "pce_pct": 17.55603909100474,
+        "r_th": 1.2,
+        "radiative_share": 0.43532519220033283,
+        "residual_mw_cm2": 2.1520343395309283e-05,
+        "suns": 1.0,
+        "valid": true
+      },
+      {
+        "absorbed_mw_cm2": 68.4960695558816,
+        "converged": true,
+        "delta_t_k": 44.057107328076484,
+        "heat_load_mw_cm2": 51.687630141623,
+        "junction_k": 342.20710732807646,
+        "pce_pct": 16.808439414258597,
+        "r_th": 2.0,
+        "radiative_share": 0.5738141035751181,
+        "residual_mw_cm2": 1.4678052892236337e-05,
+        "suns": 1.0,
+        "valid": true
+      },
+      {
+        "absorbed_mw_cm2": 136.9921391117632,
+        "converged": true,
+        "delta_t_k": 4.683164893739786,
+        "heat_load_mw_cm2": 96.25733896165733,
+        "junction_k": 302.83316489373976,
+        "pce_pct": 20.36740007505294,
+        "r_th": 0.05,
+        "radiative_share": 0.026949030056860734,
+        "residual_mw_cm2": 8.340095263292824e-07,
+        "suns": 2.0,
+        "valid": true
+      },
+      {
+        "absorbed_mw_cm2": 136.9921391117632,
+        "converged": true,
+        "delta_t_k": 13.474707853045913,
+        "heat_load_mw_cm2": 97.63077224499753,
+        "junction_k": 311.6247078530459,
+        "pce_pct": 19.680683433382843,
+        "r_th": 0.15,
+        "radiative_share": 0.07988718624886691,
+        "residual_mw_cm2": 6.112793205659273e-05,
+        "suns": 2.0,
+        "valid": true
+      },
+      {
+        "absorbed_mw_cm2": 136.9921391117632,
+        "converged": true,
+        "delta_t_k": 25.200159967351965,
+        "heat_load_mw_cm2": 99.46246670411023,
+        "junction_k": 323.35015996735194,
+        "pce_pct": 18.764836203826494,
+        "r_th": 0.3,
+        "radiative_share": 0.15545528349549656,
+        "residual_mw_cm2": 3.2479045174227394e-05,
+        "suns": 2.0,
+        "valid": true
+      },
+      {
+        "absorbed_mw_cm2": 136.9921391117632,
+        "converged": true,
+        "delta_t_k": 43.768574423397354,
+        "heat_load_mw_cm2": 102.37093544028048,
+        "junction_k": 341.91857442339733,
+        "pce_pct": 17.310601835741362,
+        "r_th": 0.6,
+        "radiative_share": 0.287419024194125,
+        "residual_mw_cm2": 4.2968800300968724e-05,
+        "suns": 2.0,
+        "valid": true
+      },
+      {
+        "absorbed_mw_cm2": 136.9921391117632,
+        "converged": true,
+        "delta_t_k": 67.00125319213032,
+        "heat_load_mw_cm2": 106.23639387083891,
+        "junction_k": 365.1512531921303,
+        "pce_pct": 15.377872620462147,
+        "r_th": 1.2,
+        "radiative_share": 0.4744332606595362,
+        "residual_mw_cm2": 6.253412256285173e-05,
+        "suns": 2.0,
+        "valid": true
+      },
+      {
+        "absorbed_mw_cm2": 136.9921391117632,
+        "converged": true,
+        "delta_t_k": 83.8835775963799,
+        "heat_load_mw_cm2": 110.32266260843878,
+        "junction_k": 382.03357759637987,
+        "pce_pct": 13.334738251662218,
+        "r_th": 2.0,
+        "radiative_share": 0.6198268135593356,
+        "residual_mw_cm2": 7.061772143401868e-05,
+        "suns": 2.0,
+        "valid": true
+      },
+      {
+        "absorbed_mw_cm2": 342.480347779408,
+        "converged": true,
+        "delta_t_k": 11.86581107639637,
+        "heat_load_mw_cm2": 244.12943568899064,
+        "junction_k": 310.01581107639635,
+        "pce_pct": 19.670182418083478,
+        "r_th": 0.05,
+        "radiative_share": 0.02790826452772323,
+        "residual_mw_cm2": 1.4709148899783031e-05,
+        "suns": 5.0,
+        "valid": true
+      },
+      {
+        "absorbed_mw_cm2": 342.480347779408,
+        "converged": true,
+        "delta_t_k": 34.59248356016366,
+        "heat_load_mw_cm2": 252.84834741886158,
+        "junction_k": 332.74248356016363,
+        "pce_pct": 17.926400072109285,
+        "r_th": 0.15,
+        "radiative_share": 0.08792566387990954,
+        "residual_mw_cm2": 6.84566375639406e-05,
+        "suns": 5.0,
+        "valid": true
+      },
+      {
+        "absorbed_mw_cm2": 342.480347779408,
+        "converged": true,
+        "delta_t_k": 64.95163765850447,
+        "heat_load_mw_cm2": 264.8875261108261,
+        "junction_k": 363.10163765850444,
+        "pce_pct": 15.518564333716384,
+        "r_th": 0.3,
+        "radiative_share": 0.18265148593226158,
+        "residual_mw_cm2": 3.299991857375062e-05,
+        "suns": 5.0,
+        "valid": true
+      },
+      {
+        "r_th": 0.6,
+        "reason": "ModelValidityError: converged junction temperature 426.5 K lies outside the electrical model's registered validity windo",
+        "suns": 5.0,
+        "valid": false
+      },
+      {
+        "r_th": 1.2,
+        "reason": "ModelValidityError: converged junction temperature 466.8 K lies outside the electrical model's registered validity windo",
+        "suns": 5.0,
+        "valid": false
+      },
+      {
+        "r_th": 2.0,
+        "reason": "ModelValidityError: converged junction temperature 487.5 K lies outside the electrical model's registered validity windo",
+        "suns": 5.0,
+        "valid": false
+      }
+    ]
+  },
+  "synthetic_recovery": {
+    "identifiability_note": "R_th and emissivity are separated by the irradiance dependence: the conduction term scales linearly with the heat load while the radiative term scales as the fourth power of the temperature. Data at a single irradiance cannot separate them (see the correlation below).",
+    "jacobian_condition_number": 108.5685407715446,
+    "label": "SOFTWARE VERIFICATION ONLY - synthetic data, no measurement",
+    "noiseless_abs_error": {
+      "emissivity": 8.310215852014302e-06,
+      "r_th": 1.3452420328241566e-06
+    },
+    "noiseless_recovery": {
+      "emissivity": 0.850008310215852,
+      "r_th": 0.45000134524203284
+    },
+    "noisy_abs_error": {
+      "emissivity": 0.0032495152112306247,
+      "r_th": 0.000846765249719772
+    },
+    "noisy_recovery_0p2K": {
+      "emissivity": 0.8532495152112306,
+      "r_th": 0.44915323475028024
+    },
+    "single_irradiance_condition_number": Infinity,
+    "truth": {
+      "emissivity": 0.85,
+      "r_th": 0.45
+    }
+  }
+}
