@@ -1199,3 +1199,362 @@ search can mistake grid noise for physics. Required before trust: use **L4/L5
 only**, never optimise a level below L4, treat any objective value from an
 INVALID solve as absent (not as a penalty), and carry the campaign id, seed,
 level and parameter point with every candidate.
+
+# PART V1.9-D — GLOBAL SENSITIVITY FOUNDATION
+
+**Cycle:** ten-update program, update 1 of 10 (V1.9-D … V1.9-M).
+**Status:** COMPLETE. Artifact `data/v19_sensitivity.json` (398 kB, physics digest
+`93f40c91cc5db29e8239dc8eb59340494afc48bf873311cd90a8f5ffd0b72ecd`), eight
+independently executable and mergeable sections, 26 new tests, full suite
+**168 passed / 1 skipped**.
+
+## 32. V1.9-D — mission and implementation
+
+**MISSION.** Turn the V1.9-C engine (fast, guarded, multi-fidelity) into a
+sensitivity instrument: a rigorous variance-based global sensitivity system that
+identifies which parameters actually control the device, where the model's own
+validity ends, which conclusions are method-dependent, and which are not
+reportable at the available sample size.
+
+**IMPLEMENTATION.** Four new modules and one campaign driver:
+
+| Component | File | What it does |
+| --- | --- | --- |
+| Saltelli design + estimators | `apmt/sensitivity/sobol.py` | A/B/AB_i/BA_i design, Saltelli first/total/second-order estimators, bootstrap CIs, INVALID/degenerate handling, Ishigami reference functions |
+| Regime campaign, envelopes, cross-checks | `apmt/sensitivity/campaign.py` | per-axis validity envelopes, shared verified box, regime analysis, LHS/Spearman cross-check, interaction study, response shapes, prior diagnostic |
+| Calibration + interaction study | same | Ishigami error calibration at the campaign's exact design sizes; calibrated pairwise detection floor |
+| Campaign driver | `tools/v19_sensitivity_campaign.py` | eight sections (`box`, `regimes`, `crosscheck`, `l5`, `estimator`, `interactions`, `shapes`, `prior`), each flushed independently, merge-on-write, physics digest |
+| Engine hardening | `apmt/validation/guard.py`, `apmt/device/batch.py` | a failed solve is now INVALID **in the verdict** as well as in the flag (§34) |
+
+**Definition of global vs local used throughout.** GLOBAL = variance-based
+(Sobol): how much of the output variance each parameter explains, including
+everything that varies with it. LOCAL = one-at-a-time at an anchor. They are
+different questions and, for this device, they give nearly opposite rankings (§37).
+
+**Reproducibility.** Every section records seed, box, level, bounds, design
+fingerprint, rejection ledger and environment (python/numpy/commit/registry
+fingerprint); the artifact carries a physics digest that excludes all wall-clock
+keys (stability across reruns and machines is pinned by tests in
+`tests/test_v19_batch_surrogate.py` and `tests/test_v19_sensitivity.py`).
+
+## 33. Estimator verification — Ishigami known-answer test and its measured limits
+
+A variance decomposition that is not verified against a known answer is not a
+measurement. The estimators are tested against the Ishigami function
+(Var = 13.8445, S1 = 0.3139/0.4424/0.0, S_T = 0.5576/0.4424/0.2437, S13 = 0.2437):
+
+| Quantity | Analytic | Measured (N = 4096, bootstrap) |
+| --- | --- | --- |
+| S_T(x1, x2, x3) | 0.5576 / 0.4424 / 0.2437 | 0.537 / 0.450 / 0.245 |
+| S1(x1, x3) | 0.3139 / 0.0 | 0.334 / -0.007 |
+| S13 | 0.2437 | 0.261 |
+| Var | 13.8445 | 13.39 (5 % MC tolerance, documented) |
+
+**The important number is the error at the campaign's own sample size.**
+Measured on Ishigami at N = 96: worst-case error **0.27** on a total-order index;
+at the interaction study's design (d = 4, N = 768) the pairwise noise floor is
+**0.128** with a 0.030 error on the one known pair. These are not caveats bolted on
+afterwards — they are computed by `estimator_validation()` and stored in the
+artifact, and the campaign's headline statements are restricted to what clears them.
+
+**Consequence adopted by this update:** a parameter is called *established* only if
+its total-order index clears the calibrated worst-case error. At N = 96 that admits
+**two parameters** in the nominal regime and **one** under concentration.
+Everything else is reported as "small, or indistinguishable from zero at this
+sample size" — never as "no effect".
+
+## 34. The validated design space — what the model refuses to describe
+
+Sobol indices require a COMPLETE design; an invalid point is not a missing value to
+be imputed. The campaign therefore determines, and then verifies, the box it is
+allowed to sample.
+
+**Per-axis validity envelopes** (walk each axis from its default to its bound, all
+others at defaults, at L4):
+
+| Regime | Restricted axes | Reachable interval | Registered |
+| --- | --- | --- | --- |
+| 1 sun, 298.15 K ambient | none | all axes full | — |
+| 1 sun, 338.15 K ambient | none | all axes full | — |
+| **3 suns, 298.15 K** | **`thermal_resistance_k_cm2_w`** | **<= 1.15 K cm2/mW** | <= 2.0 |
+
+**Joint constraint.** A box can be valid along every axis and still contain an
+invalid corner: the single-axis envelope for the thermal resistance (1.15) is not
+sufficient. With the other thirteen axes varying, the verified box is
+**R_th in [0.159, 0.778] K cm2/mW** (11 % of the registered width on that axis,
+0.951 of the registered box overall). Every regime is then re-probed in the shared
+box: 100 % valid.
+
+**Full registered box validity** (probe of 64 points per regime):
+
+| Regime | Full-box validity | Failure mode |
+| --- | --- | --- |
+| 1 sun, 298.15 K | **1.00** (64/64) | — |
+| 1 sun, 338.15 K | **1.00** (64/64) | — |
+| 3 suns, 298.15 K | **0.50** (32/64) | 31 x `ModelValidityError`: junction outside the 220-400 K electrical envelope |
+
+**Regimes the registered default device cannot reach** (recorded, not dropped):
+5.0 suns / 338.15 K ambient (junction 415.3 K) and 10.0 suns / 298.15 K (junction
+451.9 K). Both are inside the registered parameter ranges and outside the model's
+validity envelope, so the model makes no claim there. This is the V1.9-C 454 K
+finding reappearing as an operating-condition boundary rather than a
+parameter-range problem.
+
+**Engine hardening found by this work.** Before V1.9-D an out-of-envelope solve
+produced `valid = False` but `verdict.status = PASS` (the invariant bundle was
+empty), so a consumer reading the verdict would have accepted it. The guard now
+attaches a HARD `numerical.solve_completed` failure on both dispatch paths, and
+`test_invalid_solve_is_invalid_in_the_verdict_too` pins it.
+
+## 35. Global sensitivity results (L4, three regimes)
+
+Design: 14 architecture axes, N = 96 base samples x 2 independent replicates per
+regime (mean +/- replicate spread), L4 physics, 17,280 evaluations for this part.
+Only L4 carries scientific statements; §37 gives the L2 comparison.
+
+**Nominal (1 sun, 298.15 K) — total-order S_T:**
+
+| Rank | Parameter | S_T | S1 | Interaction budget (S_T - S1) |
+| --- | --- | --- | --- | --- |
+| 1 | `perovskite_eg_ev` | **0.590 +/- 0.052** | 0.409 | +0.180 |
+| 2 | `perovskite_thickness_nm` | **0.532 +/- 0.058** | 0.269 | +0.263 |
+| 3 | `rs_ohm_cm2` | 0.140 +/- 0.034 | -0.148 | +0.288 |
+| 4 | `arc_thickness_nm` | 0.039 +/- 0.002 | 0.145 | -0.106 |
+| 5 | `perovskite_urbach_mev` | 0.022 +/- 0.000 | -0.032 | +0.054 |
+| 6 | `parasitic_layer_thickness_nm` | 0.018 +/- 0.004 | 0.031 | -0.013 |
+| 7 | `thermal_resistance_k_cm2_w` | 0.017 +/- 0.002 | -0.014 | +0.031 |
+| 8 | `silicon_light_trapping` | 0.013 +/- 0.001 | -0.010 | +0.023 |
+
+**Concentration changes which parameter dominates (3 suns, 298.15 K):**
+
+| Rank | Parameter | S_T | S1 | Interaction budget |
+| --- | --- | --- | --- | --- |
+| 1 | `rs_ohm_cm2` | **0.591 +/- 0.153** | 0.193 | +0.399 |
+| 2 | `perovskite_eg_ev` | 0.251 +/- 0.019 | 0.241 | +0.010 |
+| 3 | `thermal_resistance_k_cm2_w` | 0.184 +/- 0.018 | 0.135 | +0.049 |
+| 4 | `perovskite_thickness_nm` | 0.114 +/- 0.019 | 0.026 | +0.088 |
+
+The series resistance moves from 3rd (0.140) to 1st (0.591) and the bandgap falls
+from 1st (0.590) to 2nd (0.251): the dominant physics changes with operating
+condition. That is the I^2 R scaling of the resistive loss with the photocurrent,
+and the dedicated interaction study sees the same mechanism directly (§36).
+
+**Hot ambient (1 sun, 338.15 K):** `perovskite_eg_ev` 0.588 +/- 0.063,
+`perovskite_thickness_nm` 0.425 +/- 0.047, `rs_ohm_cm2` 0.174 +/- 0.044,
+`thermal_resistance_k_cm2_w` 0.041 +/- 0.005 — the nominal ordering with the thermal
+resistance promoted into the top four.
+
+**Regime comparison:** cross-regime rank correlations rho = 0.864 / 0.930 / 0.969.
+Parameters whose importance is regime-dependent by the pre-declared criterion
+(index range > max(0.10, 2x mean replicate spread)): **`rs_ohm_cm2`,
+`perovskite_eg_ev`, `perovskite_thickness_nm`, `thermal_resistance_k_cm2_w`**.
+
+**Per-output drivers (nominal)** show that no single parameter explains the device:
+Voc is bandgap-dominated (S_T 0.932), FF is resistance-dominated (0.781), junction
+temperature is thermal-resistance-dominated (0.902), the current-matching ratio is
+thickness-dominated (0.582), and the heat load is dominated by parasitic absorption
+(0.360). Ranking a design on PCE alone hides this structure.
+
+**Non-monotonicity is measured, not assumed** (`response_shape`, 21-point 1-D
+slices per axis, three regimes):
+
+| Axis | Shape | Optimum | PCE range on the slice |
+| --- | --- | --- | --- |
+| `perovskite_eg_ev` | **INTERIOR-OPTIMUM** | 1.61 eV (nominal), 1.64 eV (concentrated/hot) | 6.4-7.4 pp |
+| `perovskite_thickness_nm` | **INTERIOR-OPTIMUM** | 690 nm | 9.3-11.4 pp |
+| `arc_thickness_nm` | **INTERIOR-OPTIMUM** | 77 nm | 2.9-3.6 pp |
+| `rsh_ohm_cm2` | MONOTONE | at the high bound | 8.9-16.7 pp |
+
+## 36. Interactions — what is estimable at this budget, and what is not
+
+**First result: this campaign's raw pairwise indices are NOT reportable.** Measured
+on Ishigami at the campaign's own design (N = 96, d = 3):
+
+| Seed | S13 (truth 0.2437) | Largest spurious pair (truth 0.0) |
+| --- | --- | --- |
+| 0 | 0.01 | 0.240 |
+| 1 | 0.36 | 0.340 |
+| 2 | 0.17 | 0.087 |
+
+Spurious pairs reach the magnitude of the real one and the real pair moves by 0.35
+between designs. The artifact therefore sets `pairwise_indices_reportable = false`
+and keeps the raw values "for audit only".
+
+**Second result: the interaction BUDGET is usable and costs nothing.** S_T - S1 (the
+interaction share of a parameter's effect) is far more stable than a pairwise index
+and identifies the same physics: `rs_ohm_cm2` is almost entirely interaction-driven
+at nominal (S_T 0.140, S1 -0.148, budget +0.288) and under concentration
+(0.591 / 0.193 / +0.399).
+
+**Third result: a dedicated interaction study at a calibratable design size.**
+d = 4 dominant axes, N = 768, L4 (15,360 evaluations), detection floor calibrated at
+exactly that design (0.128):
+
+| Regime | Reportable pairs (> 0.128) | Reading |
+| --- | --- | --- |
+| nominal 1 sun | `perovskite_eg_ev x perovskite_thickness_nm` **+0.234** | current matching: bandgap and thickness are only jointly meaningful |
+| 3 suns | `perovskite_thickness_nm x rs_ohm_cm2` **-0.209**, `perovskite_eg_ev x rs_ohm_cm2` **-0.142** | at 3x photocurrent the I^2 R loss punishes exactly the designs that absorb more |
+
+Sub-floor pairs (e.g. `rs_ohm_cm2 x arc_thickness_nm` 0.061 at nominal) are retained
+in the artifact but explicitly not interpreted.
+
+**Ranking stability across design size.** The d = 4, N = 768 study reproduces the
+d = 14, N = 96 ordering in both regimes (nominal: Eg > thickness > rs > ARC;
+concentrated: rs > Eg > thickness > ARC) even though the magnitudes shift (0.590 ->
+0.738 for Eg at nominal). The RANKING is robust to the sample size; the numbers are
+not, and the artifact reports both.
+
+## 37. Negative results: screening and local sensitivity both mis-rank
+
+**L2 screening is not a substitute for L4 analysis.** Same designs, same samples,
+only the fidelity differs:
+
+| Regime | rho(L2 vs L4 ranking) | Verdict | Disagreeing parameters |
+| --- | --- | --- | --- |
+| nominal | 0.648 | RANKING-SHIFTED | 7 |
+| concentrated | 0.367 | RANKING-SHIFTED | 7 |
+| hot ambient | 0.521 | RANKING-SHIFTED | 7 |
+
+The reason is structural, not numerical: L2 has no thermal feedback and no resistive
+network, so it cannot see `thermal_resistance_k_cm2_w` or the I^2 R-driven importance
+of `rs_ohm_cm2`. **Screening may reject parameters; it may not rank them.** This is
+the quantitative answer to Update J's question about when low fidelity is safe, and
+it is a NEGATIVE result: the cheap model is not usable for the purpose it would be
+most useful for.
+
+**Local (OAT) sensitivity anti-correlates with global sensitivity.**
+
+| Regime | rho(local vs global ranking) | Local top-3 | Global top-3 |
+| --- | --- | --- | --- |
+| nominal | **-0.358** | `silicon_eg_ev`, `perovskite_eg_ev`, `thermal_resistance_k_cm2_w` | `perovskite_eg_ev`, `perovskite_thickness_nm`, `rs_ohm_cm2` |
+| concentrated | **-0.565** | `silicon_eg_ev`, `thermal_resistance_k_cm2_w`, `perovskite_eg_ev` | `rs_ohm_cm2`, `perovskite_eg_ev`, `thermal_resistance_k_cm2_w` |
+| hot ambient | **-0.503** | `silicon_eg_ev`, `perovskite_eg_ev`, `thermal_resistance_k_cm2_w` | `perovskite_eg_ev`, `perovskite_thickness_nm`, `rs_ohm_cm2` |
+
+A parameter with a large local derivative at the anchor (`silicon_eg_ev`) is globally
+unimportant; a parameter with a dominant global index (`perovskite_thickness_nm`) is
+not locally special at 500 nm. The mechanism is visible in §35: the dominant
+responses are interior optima, so a slope at one point says almost nothing about
+variance over the space. The two rankings contain the SAME 14 parameters — they are
+compared by ORDER, never by which parameters appear.
+
+**Monotone/linear screens under-rank the most important parameter.** On the same
+samples (nominal, replicate 1): linear model R^2 = 0.563; Spearman ranks
+`perovskite_thickness_nm` (+0.483) first and `perovskite_eg_ev` (+0.326) fourth,
+whereas the variance decomposition puts `perovskite_eg_ev` first (0.590 vs 0.532).
+A monotone statistic cannot see an interior optimum. Therefore the LHS/Spearman
+cross-check VALIDATES the simulation design (agreement that the design explores real
+variation) but does NOT validate the ranking, and the artifact stores it under that
+restricted claim.
+
+**Distribution dependence is real and only partly quantified here.** A
+variance-based index is defined relative to the sampling distribution. The
+`rsh_ohm_cm2` axis has a 16.7 pp 1-D range at nominal yet a small index under the
+campaign's uniform-linear prior, because almost all of that prior's mass sits in the
+benign high-resistance region. The attempt to quantify the alternative log-uniform
+prior is recorded as a **diagnostic negative result** (`prior_sensitivity` section):
+the low-shunt region is partly INVALID (`electrical.range.ff`,
+`electrical.range.pce_pct`, `electrical.range.jmp_ma_cm2` all fail at 50 ohm cm2 in
+combination with current-matching extremes; 5/480 points rejected, and the survivors
+are not a random sample of the prior), and the surviving indices at N = 96 are
+noise-dominated (an FF first-order index of -1.11 is not a physical statement). The
+question is deferred to V1.9-E, where priors and uncertainty belong — the registry
+range is not a probability distribution and is not treated as one.
+
+**A diagnostic honest-reporting case.** `arc_thickness_nm` shows S1 (0.145) > S_T
+(0.039) at nominal, which is mathematically impossible for an exact decomposition.
+It is the signature of estimator noise on a small parameter at N = 96; it is reported
+as an inconsistency rather than resolved by quoting whichever of the two numbers
+looks better.
+
+## 38. Tests, benchmarks, engineering
+
+**TESTS (26 new, all passing; full suite 168 passed / 1 skipped in 92.3 s)**
+
+| Area | Tests |
+| --- | --- |
+| estimator known answers | Ishigami first/total/second-order vs analytic values; S_T >= S1; bootstrap CI covers the truth; the documented N = 96 error band |
+| design | block structure (AB_i differs from A only in column i), reproducibility by seed, never leaves the box |
+| INVALID handling | NaN rows -> `complete=False` with counts, never imputed; all-NaN -> NOT_APPLICABLE; zero variance -> UNDEFINED (not zero) |
+| validity envelopes | reachable values inside the registered range (regression for a sign bug found in development), nominal box == registered box, concentrated box restricted and probe-verified, shared box == per-axis intersection (regression for the uniform-rescale bug) |
+| engine hardening | an out-of-envelope solve is INVALID in the verdict *and* the flag, on both dispatch paths |
+| campaign | regime indices + provenance, box within registered, screening labelled, rejection accounting, local/global separation, Spearman helpers |
+| interactions/calibration | pairwise non-reportability at N = 96, calibrated floor, inert-variable structural zero, sub-floor pairs excluded |
+| artifact | digest verifies, PRE-GATE label, L4 analysis level, unreachable regimes recorded, interaction pairs above the floor, calibration section complete, runtime absent from the physics digest |
+
+**BENCHMARKS (2 vCPU sandbox; machine-specific)**
+
+| Measurement | Value |
+| --- | --- |
+| L4 batch throughput | 32.2 solves/s (300-sample batch) |
+| Sobol section per regime (5,760 L4 solves + screening + probes) | 211-291 s |
+| Interaction study per regime (7,680 L4 solves) | 246-308 s |
+| Response-shape section (42 axes x 21 points, 3 regimes) | 26 s |
+| Cumulative campaign compute for this artifact | ~1,516 s (25 min) of L4 physics |
+| Preserved V1.9-C speedups | 718x single-point, 1206x batch(3) vs the reference solver |
+
+**ENGINEERING.** The driver runs each of the eight sections independently, flushes
+after every one, and merges into the existing artifact; a crash in one section can no
+longer destroy the other seven. That property was earned: during development the
+driver crashed three times in the final section, and the third fix (sections writable
+in isolation) is what turned a 25-minute run into a 20-second rerun. Two real bugs
+were found and fixed this way — a 14-axis box handed to a 4-axis design (now
+`shared_box_named`), and a stub `estimator_validation` section silently replacing the
+full calibration on rewrite (the merge now prefers the existing full section).
+`runtime_s` is deliberately excluded from the physics digest, and the cumulative
+runtime is stored outside it.
+
+## 39. What changed, why, limitations, next target
+
+**What changed (V1.9-C9 -> V1.9-D).** New: `apmt/sensitivity/` (Saltelli design and
+estimators, Ishigami calibration, regime campaign, validity envelopes and the shared
+verified box, LHS/Spearman cross-check, interaction study, response shapes, prior
+diagnostic), `tools/v19_sensitivity_campaign.py`, `tests/test_v19_sensitivity.py`,
+`data/v19_sensitivity.json`. Modified: `apmt/validation/guard.py` and
+`apmt/device/batch.py` (INVALID solves now carry a HARD invariant failure). No
+historical artifact or number was changed and nothing was deleted.
+
+**Why.** Update D of the program requires global sensitivity to be a verified
+instrument rather than a set of numbers. The verification is what produced the
+usable methodology: report interaction budgets, not pairwise indices; report
+established vs indistinguishable, not small vs zero.
+
+**KEY FINDINGS.**
+
+1. **The dominant parameter is regime-dependent.** `rs_ohm_cm2` is 3rd at 1 sun
+   (S_T 0.140) and 1st at 3 suns (0.591); `perovskite_eg_ev` goes the other way
+   (0.590 -> 0.251). Ranking parameters once, at one operating point, is invalid.
+2. **The bandgap and the perovskite thickness are only jointly meaningful**
+   (`S_Eg x thickness` = +0.234, the single reportable pair at nominal).
+3. **At 3 suns the resistive loss attacks exactly the designs that generate more**
+   (negative thickness x rs and Eg x rs pairs) — the first mechanism-level
+   explanation of the ranking change, not a correlation.
+4. **Only two parameters are established at 1 sun at this sample size**, and one at
+   3 suns. The rest are indistinguishable from zero *given the calibrated estimator
+   error* — a deliberately weaker and honest claim.
+5. **Screening and local sensitivity mis-rank; only L4/L5 variance-based analysis
+   ranks** (§37), which is now a measured constraint for Updates E-M.
+6. **The model's validity boundary is a joint constraint, not a box**: full
+   registered-box validity is 1.00 / 1.00 / 0.50 at 1 / 3 / 3 suns.
+
+**LIMITATIONS (explicit).**
+
+* First/total-order indices at N = 96 carry up to 0.27 absolute error; only the top
+  one or two parameters per regime are quantitatively meaningful, and the
+  replicate spreads (e.g. 0.591 +/- 0.153 for rs at 3 suns) are reported everywhere.
+* Pairwise indices from the campaign design are NOT reportable; only the dedicated
+  N = 768, d = 4 study is, and only above its 0.128 floor.
+* Regimes are three; the shared box is a box, so the index values apply to that box
+  and not to the registered ranges.
+* The `rsh_ohm_cm2` distribution dependence is demonstrated but not quantified (§37);
+  the fix is a prior-based analysis, which is Update E's job.
+* ISC labelling: every number in this part is **PRE-GATE / MODEL-OBSERVED /
+  EXPLORATORY**. No claim here is an experimental claim.
+
+**NEXT TARGET (V1.9-E).** Build the surrogate layer on top of this instrument:
+benchmark GP / tree ensembles / neural and polynomial-sparse surfaces for
+PCE/Jsc/Voc/FF/temperature, with RMSE/MAE/max-error, extrapolation detection,
+uncertainty calibration and error-region detection; consume the §35 response shapes
+(interior optima, interaction pairs) as structure the surrogates must reproduce;
+exclude INVALID points at the dataset level (using the §34 shared box and the
+verdict-level INVALID hardening); and never let a surrogate's smoothness override a
+high-fidelity verification.
