@@ -135,6 +135,17 @@ _SPECS: Tuple[ParamSpec, ...] = (
        "Si Eg(0) = 1.170 eV with Varshni alpha=4.73e-4 eV/K, beta=636 K gives "
        "1.121 eV at 298 K",
        uncertainty=0.003),
+    _p("rear_reflectance", "1", 0.0, 0.0, 0.98,
+       ProvenanceCategory.MODEL_ASSUMED, RangeClass.LITERATURE_SUPPORTED,
+       "Fraction of the light leaving the silicon wafer that is reflected back "
+       "into the stack at the rear interface (rear mirror / back reflector). "
+       "A second optical pass through the perovskite, the transport layer and "
+       "the ARC is solved for this returning beam, so the reflected light is "
+       "either usefully re-absorbed or escapes through the front",
+       "silicon bottom cells in monolithic tandems normally carry a rear "
+       "reflector; the value for this device class is DATA_REQUIRED, so the "
+       "default is 0 (no benefit assumed) and the range is exploratory",
+       uncertainty=0.0),
     _p("silicon_light_trapping", "1", 1.0, 1.0, 30.0,
        ProvenanceCategory.MODEL_ASSUMED, RangeClass.EXPLORATORY,
        "Effective optical path-length enhancement factor of the silicon "
@@ -184,6 +195,17 @@ _SPECS: Tuple[ParamSpec, ...] = (
        ProvenanceCategory.MODEL_ASSUMED, RangeClass.EXPLORATORY,
        "Shunt resistance of the two-terminal tandem",
        "DATA_REQUIRED (gate G7)"),
+    _p("luminescent_coupling_bottom_to_top", "1", 0.0, 0.0, 0.5,
+       ProvenanceCategory.MODEL_ASSUMED, RangeClass.EXPLORATORY,
+       "Fraction of the silicon cell's radiative recombination photons that are "
+       "re-absorbed by the perovskite top cell and contribute photocurrent "
+       "(bottom-to-top luminescent coupling). The *energy* fraction available is "
+       "computed from detailed balance (emission above the top-cell gap), not "
+       "fitted; this parameter carries only the optical re-absorption efficiency",
+       "mechanism B parameter; V1.9-C finding: the detailed-balance availability "
+       "factor is exp(-dEg/kT) suppressed (~1e-10 for Eg_top = 1.68 eV), so this "
+       "channel is physically negligible -- implemented to prove that, not to "
+       "harvest it"),
     _p("luminescent_coupling_top_to_bottom", "1", 0.0, 0.0, 0.5,
        ProvenanceCategory.MODEL_ASSUMED, RangeClass.EXPLORATORY,
        "Fraction of top-cell radiative recombination photons that reach and "
@@ -258,6 +280,14 @@ _SPECS: Tuple[ParamSpec, ...] = (
        "standard for glass-mounted cells",
        "mechanism C (thermal management) parameter; measured thermal data are "
        "DATA_REQUIRED"),
+    _p("thermal_emissivity", "1", 0.9, 0.0, 1.0,
+       ProvenanceCategory.LITERATURE_DERIVED, RangeClass.LITERATURE_SUPPORTED,
+       "Effective hemispherical emissivity of the front (glass) surface used in "
+       "the radiative heat-loss term eps*sigma*(T^4 - T_amb^4) of the "
+       "energy-balance thermal model; the sink is ambient (not the colder sky), "
+       "which is conservative",
+       "fused silica/glass front surfaces radiate with eps ~ 0.85-0.9 in the "
+       "thermal infrared", uncertainty=0.05),
     _p("thermal_management_gain", "1", 0.0, 0.0, 1.0,
        ProvenanceCategory.MODEL_ASSUMED, RangeClass.EXPLORATORY,
        "Fractional reduction of the junction-to-mount thermal resistance "

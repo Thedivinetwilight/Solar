@@ -133,7 +133,16 @@ def intrinsic_carrier_density_cm3(temperature_k: float, eg_ev: float = 1.121) ->
     """
     nc = 2.86e19 * (temperature_k / 300.0) ** 1.5
     nv = 3.10e19 * (temperature_k / 300.0) ** 1.5
-    return float(np.sqrt(nc * nv) * np.exp(-eg_ev / (2.0 * K_B_EV_K * temperature_k)))
+    # Varshni's Eg(T) can go non-physical outside the fitted temperature window;
+    # clamp the EXPONENT only (never the reported bandgap) so that n_i stays real
+    # and finite instead of silently producing a complex number (numpy would cast
+    # that to a float with a ComplexWarning).
+    # ±300 is the widest exponent that keeps n_i (and n_i^2 in the SRH slab model)
+    # representable in float64 at any T the caller can reach; the electrical
+    # validity envelope in apmt.device.thermal keeps callers inside the range
+    # where this function is calibrated anyway.
+    expo = min(max(-eg_ev / (2.0 * K_B_EV_K * temperature_k), -700.0), 300.0)
+    return float(np.sqrt(nc * nv) * np.exp(expo))
 
 
 def auger_lifetime_s(wafer_cm3: float, delta_n_cm3: float,

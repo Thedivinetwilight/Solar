@@ -146,7 +146,7 @@ def _cw(x, size: int) -> np.ndarray:
 
 
 def _solve_polarisation(layers: Sequence[Layer], wl: np.ndarray, theta: float,
-                        polarisation: str) -> tuple:
+                        polarisation: str, n_incident=None) -> tuple:
     """Vectorised backward-recursion field solution for one polarisation.
 
     The last layer may be flagged ``semi_infinite``; it then acts as the
@@ -156,7 +156,11 @@ def _solve_polarisation(layers: Sequence[Layer], wl: np.ndarray, theta: float,
     Returns (R, T, raw_absorption_by_layer, max_field_profile_ratio).
     """
     size = wl.size
-    n_inc = np.ones(size, dtype=complex)
+    if n_incident is None:
+        n_inc = np.ones(size, dtype=complex)
+    else:
+        n_r, k_r = n_incident
+        n_inc = _cw(n_r, size) - 1j * _cw(k_r, size)
 
     if any(l.semi_infinite for l in layers[:-1]):
         raise ValueError("only the last layer may be flagged semi_infinite")
@@ -279,12 +283,20 @@ def _layer_absorption(raw: dict, name: str, n_m: np.ndarray, kap: np.ndarray,
 
 
 def solve_stack(wavelength_nm: np.ndarray, layers: Sequence[Layer],
-                theta_rad: float = 0.0, closure_tol: float = 1e-9) -> OpticsResult:
+                theta_rad: float = 0.0, closure_tol: float = 1e-9,
+                incident_medium=None) -> OpticsResult:
     """Coherent TMM solution for a coherent stack (exact R+T+A closure).
 
     The last layer may be flagged ``semi_infinite`` (terminating half-space,
     e.g. an optically thick absorber). Otherwise the stack is terminated by
     air, i.e. the stack behaves as a free-standing membrane.
+
+    ``incident_medium`` = (n, k) of the half-space the light comes *from*.
+    It defaults to air. It exists for rear-reflection analysis, where the
+    returning beam enters from the silicon wafer (n ~ 3.5) rather than air;
+    assuming air there would overstate the internal reflection at the
+    perovskite entry interface and break the energy budget. (This is the
+    incident-side counterpart of the ``semi_infinite`` fix on the exit side.)
     """
     wl = np.asarray(wavelength_nm, dtype=float)
     if np.any(wl <= 0):
@@ -297,8 +309,8 @@ def solve_stack(wavelength_nm: np.ndarray, layers: Sequence[Layer],
         raise ValueError("solve_stack requires coherent layers; use "
                          "solve_incoherent_substrate for thick substrates")
 
-    Rs, Ts, raw_s, ratio_s = _solve_polarisation(layers, wl, theta_rad, "s")
-    Rp, Tp, raw_p, ratio_p = _solve_polarisation(layers, wl, theta_rad, "p")
+    Rs, Ts, raw_s, ratio_s = _solve_polarisation(layers, wl, theta_rad, "s", incident_medium)
+    Rp, Tp, raw_p, ratio_p = _solve_polarisation(layers, wl, theta_rad, "p", incident_medium)
     R = 0.5 * (Rs + Rp)
     T = 0.5 * (Ts + Tp)
     raw = {k: 0.5 * (raw_s[k] + raw_p[k]) for k in raw_s}

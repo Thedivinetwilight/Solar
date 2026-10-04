@@ -48,35 +48,64 @@ def test_tandem_baseline_regression_pin():
     * 2026-10-03 V1.9-B3  PCE 20.2412  (shunt conversion bug fixed: the Rsh
       term applied no mA<->A conversion and was numerically inert; the fix
       *lowers* the efficiency, so it is not a PCE-chasing change)
+    * 2026-10-04 V1.9-C   PCE 20.2417 (+0.0005 pp, the fast vectorised solver;
+      agreement with the reference oracle is asserted separately in
+      tests/test_v19_engine.py to 1e-4 pp). Jsc moved 15.6141 -> 15.7266
+      because the reported Jsc is now the CURRENT-SOURCE LIMIT
+      min(J_top_sc, J_bot_sc) instead of a linear interpolation of a
+      near-vertical J(V) curve at V = 0 (the previous value was an artefact of
+      that ill-conditioned intersection; the curve value is still reported as
+      jsc_conditioning_gap_ma_cm2). FF moved 0.8567 -> 0.8507 for the same
+      reason: the maximum-power point is now taken from the same common-current
+      representation as the reference solver.
+    * 2026-10-04 V1.9-C   self-heated PCE moved 17.9082 -> 19.2633 because the
+      thermal closure was rebuilt from the legacy "all incident power becomes
+      heat" rule to an energy balance (conduction + radiative cooling to
+      ambient); dT 30.0 -> 12.6 K. This is a physics change, documented in the
+      V1.9-C report section, not a tolerance relaxation.
     """
     ps = ParamSet.defaults()
     # (a) fixed-temperature diagnostic (no self-heating)
     o = evaluate_tandem(ps, self_heating=False)
-    assert o.pce_pct == pytest.approx(20.2412, abs=0.002)
-    assert o.jsc_ma_cm2 == pytest.approx(15.6141, abs=0.002)
-    assert o.voc_v == pytest.approx(1.5131, abs=0.001)
-    assert o.ff == pytest.approx(0.8567, abs=0.002)
+    assert o.pce_pct == pytest.approx(20.2417, abs=0.002)
+    assert o.jsc_ma_cm2 == pytest.approx(15.7266, abs=0.002)
+    assert o.voc_v == pytest.approx(1.5130, abs=0.001)
+    assert o.ff == pytest.approx(0.8507, abs=0.002)
     assert o.j_top_sc == pytest.approx(15.7266, abs=0.002)
     assert o.j_bottom_sc == pytest.approx(19.8030, abs=0.002)
     assert o.coupling_converged
-    # (b) the default configuration includes one-sun self-heating: the junction
-    # runs 30 K above ambient under the conservative all-incident-power closure
+    # the conditioning diagnostic: the tandem J(V) curve loses ~393 mA/cm^2 per
+    # volt of forward bias just above short circuit, i.e. a 20 mV bias error
+    # would move the "current at V = 0" by ~7.9 mA/cm^2 -- which is why Jsc is
+    # defined as the current-source limit and not read off the curve
+    assert o.detail["jsc_bias_sensitivity_ma_cm2_per_v"] == pytest.approx(393.2, rel=0.02)
+    assert o.detail["jsc_curve_grid_endpoint_ma_cm2"] == pytest.approx(15.7266, abs=0.002)
+    # (b) the default configuration includes one-sun self-heating
     hot = evaluate_tandem(ps)
-    assert hot.detail["thermal"]["delta_t_k"] == pytest.approx(30.0, abs=0.01)
-    assert hot.pce_pct == pytest.approx(17.9082, abs=0.002)
+    th = hot.detail["thermal"]
+    assert th["model"] == "energy_balance"
+    assert th["delta_t_k"] == pytest.approx(12.59, abs=0.02)
+    assert hot.pce_pct == pytest.approx(19.2633, abs=0.002)
     assert hot.pce_pct < o.pce_pct     # heating can only cost efficiency
+    assert abs(th["residual_mw_cm2"]) < 1e-3      # the balance must close
 
 
 def test_thermal_mechanism_is_wired_and_directional():
     """Mechanism C: thermal management must reduce the junction temperature and
-    recover efficiency; the heat-fraction parameter must scale the rise."""
+    recover efficiency; the heat-fraction parameter must scale the rise.
+
+    V1.9-C pin move: the numbers below are those of the energy-balance closure
+    (conduction + radiative cooling), not the legacy all-incident-power rule, so
+    they are smaller than the V1.9-B values (12.0 -> 5.48 K for gain 0.6,
+    15.0 -> 3.68 K for heat fraction 0.5)."""
     ps = ParamSet.defaults()
     base = evaluate_tandem(ps)
     cooled = evaluate_tandem(ps.with_mapping({"thermal_management_gain": 0.6}))
-    assert cooled.detail["thermal"]["delta_t_k"] == pytest.approx(12.0, abs=0.01)
+    assert cooled.detail["thermal"]["delta_t_k"] == pytest.approx(5.48, abs=0.02)
     assert cooled.pce_pct > base.pce_pct
     half_heat = evaluate_tandem(ps.with_mapping({"absorption_heat_fraction": 0.5}))
-    assert half_heat.detail["thermal"]["delta_t_k"] == pytest.approx(15.0, abs=0.01)
+    assert half_heat.detail["thermal"]["delta_t_k"] == pytest.approx(3.68, abs=0.02)
+    assert half_heat.pce_pct > base.pce_pct
 
 
 def test_luminescent_coupling_is_bounded_and_directionally_honest():

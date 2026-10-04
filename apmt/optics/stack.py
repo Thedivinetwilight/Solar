@@ -36,7 +36,7 @@ from ..materials.perovskite import perovskite_index
 from ..materials.silicon import silicon_index
 from ..params.registry import ParamSet
 from ..spectra.reference import Spectrum, reference
-from .tmm import Layer, OpticsResult, solve_incoherent_substrate
+from .tmm import Layer, OpticsResult, solve_incoherent_substrate, solve_stack
 
 # Fixed optical constants of the auxiliary layers (documented; these are shape
 # assumptions of the stack model, not fitted device parameters):
@@ -82,6 +82,22 @@ class TandemOpticsResult:
     def transmission_loss_ma_cm2(self, spectrum: Optional[Spectrum] = None) -> float:
         sp = spectrum or reference()
         return sp.eqe_current(self.transmittance, self.wavelength_nm, 300.0, 1250.0)
+
+    def absorbed_power_mw_cm2(self, spectrum: Optional[Spectrum] = None) -> float:
+        """Absorbed optical power density [mW/cm^2] over the solution window.
+
+        int G(lambda) * A_total(lambda) dlambda with G in W m^-2 nm^-1 and the
+        conversion 1 W/m^2 = 0.1 mW/cm^2 (so the result is directly comparable
+        with a 100 mW/cm^2 one-sun reference). This is the quantity that becomes
+        heat in the thermal energy balance.
+        """
+        sp = spectrum or reference()
+        m = sp.mask(float(self.wavelength_nm[0]), float(self.wavelength_nm[-1]))
+        wl = sp.wavelength_nm[m]
+        a_total = np.interp(wl, self.wavelength_nm,
+                            np.asarray(self.optics.total_absorption))
+        power_w_m2 = trapz(sp.irradiance_w_m2_nm[m] * a_total, wl)
+        return float(power_w_m2 * 0.1)
 
     def absorbed_photon_budget(self, spectrum: Optional[Spectrum] = None) -> dict:
         """Photon-budget decomposition of the 300-1250 nm window [mA/cm2]."""
@@ -144,6 +160,85 @@ def build_stack(ps: ParamSet) -> tuple:
     return front, substrate, wl
 
 
+
+
+def second_pass_absorption(front_layers, wl: np.ndarray, theta_rad: float = 0.0,
+                           incident_medium=None) -> dict:
+    """Absorption of a beam returning from the rear through the front stack.
+
+    The returning beam enters from the substrate side, so the stack is solved in
+    reverse: [perovskite, transport, ARC] terminated by an air half-space. The
+    result partitions the returning flux exactly:
+
+            a_perovskite + a_parasitic + back_into_substrate + escape_to_air = 1
+
+    which is what keeps the full optical budget closed when a rear reflector is
+    introduced. Interface reflections inside the returning stack are treated with
+    the same coherent TMM as the forward pass.
+    """
+    rev = []
+    for layer in reversed(list(front_layers)):
+        rev.append(Layer(layer.name, layer.thickness_nm, layer.n, layer.k,
+                         coherent=True, pv_active=layer.pv_active))
+    exit_layer = Layer("__exit__", 0.0, MG_F2_N, 0.0, coherent=True,
+                       pv_active=False, semi_infinite=True)
+    res = solve_stack(wl, rev + [exit_layer], theta_rad=theta_rad,
+                      incident_medium=incident_medium)
+    a = res.layer_absorption
+    return {
+        "perovskite": np.asarray(a.get("perovskite", np.zeros_like(wl))),
+        "transport": np.asarray(a.get("transport", np.zeros_like(wl))),
+        "arc": np.asarray(a.get("arc", np.zeros_like(wl))),
+        "escape": np.asarray(res.transmittance),
+        "back_into_substrate": np.asarray(res.reflectance),
+        "closure_residual": np.asarray(res.closure_residual()),
+    }
+
+
+def apply_rear_reflectance(res: OpticsResult, front_layers, wl: np.ndarray,
+                           rear_reflectance: float, theta_rad: float = 0.0,
+                           incident_medium=None) -> OpticsResult:
+    """Redistribute the rear-reflected flux, exactly conserving R + T + A = 1.
+
+    ``res`` must be the *zero-rear-reflectance* solution (so its transmittance is
+    the flux leaving the wafer). The flux ``T * R_rear`` is sent back through the
+    stack, where it is absorbed in the perovskite (useful), absorbed in the
+    auxiliary layers (parasitic) or escapes through the front (reflection loss).
+    A single back-pass is modelled: higher-order bounces carry a factor
+    ``R_rear * a_back`` and are small for the considered stacks (documented
+    approximation, not a silent one).
+
+    NOTE the trap this avoids: adding the second-pass absorption without removing
+    the corresponding flux from the transmittance would break the energy budget
+    (total = 1 + returning instead of 1).
+    """
+    R_rear = float(np.clip(rear_reflectance, 0.0, 0.999))
+    if R_rear <= 0.0:
+        return res
+    back = second_pass_absorption(front_layers, wl, theta_rad, incident_medium)
+    returning = res.transmittance * R_rear
+    layer_abs = {k: np.asarray(v).copy() for k, v in res.layer_absorption.items()}
+    layer_abs["perovskite"] = layer_abs["perovskite"] + returning * back["perovskite"]
+    for aux in ("transport", "arc"):
+        if aux in layer_abs:
+            layer_abs[aux] = layer_abs[aux] + returning * back[aux]
+    # The part of the returning beam that is internally reflected at the front
+    # interface travels back into the wafer. It is counted as absorbed in the
+    # silicon: an upper bound (the wafer absorbs most of the near-bandgap flux on
+    # a second pass), and it cannot flatter the PCE of a top-cell-limited device.
+    # Higher-order bounces (factor >= R_rear * a_back) are neglected.
+    if "silicon" in layer_abs:
+        layer_abs["silicon"] = layer_abs["silicon"] + returning * back["back_into_substrate"]
+    R_new = res.reflectance + returning * back["escape"]
+    T_new = res.transmittance * (1.0 - R_rear)
+    out = OpticsResult(res.wavelength_nm, R_new, T_new, layer_abs,
+                       field_profile_ratio=res.field_profile_ratio,
+                       angular=res.angular,
+                       notes=(res.notes + f"; rear_reflectance={R_rear:.3f} "
+                                             f"(single back-pass)"))
+    out.assert_closure(1e-9)
+    return out
+
 # 5 nm resolution over the photovoltaic window: the optics are smooth on this
 # scale (checked by the numerical-convergence study in the campaigns).
 TANDEM_WAVELENGTH_NM = np.arange(300.0, 1250.0 + 1e-9, 5.0)
@@ -158,6 +253,9 @@ def solve_tandem_optics(ps: ParamSet, model_form: str = "IQE-M1",
         wl, front, substrate, theta_rad=theta_rad,
         rear_reflectance=0.0,
         path_enhancement=ps["silicon_light_trapping"])
+    si_n_k = (silicon_index(wl, tail_nm=25.0).n, np.zeros_like(wl))
+    res = apply_rear_reflectance(res, front, wl, ps["rear_reflectance"], theta_rad,
+                                 incident_medium=si_n_k)
 
     a_top = res.layer_absorption["perovskite"]
     a_bot = res.layer_absorption["silicon"]
@@ -195,6 +293,58 @@ def solve_tandem_optics(ps: ParamSet, model_form: str = "IQE-M1",
                     "transport": res.layer_absorption["transport"]},
         eqe_top=eqe_top, eqe_bottom=eqe_bottom, iqe_top=iqe_top, iqe_bottom=iqe_bottom,
         optics=res, model_form=model_form)
+
+
+# ---------------------------------------------------------------------------
+# Level-0 optics: Beer-Lambert absorption without interference
+# ---------------------------------------------------------------------------
+def solve_beer_lambert_optics(ps: ParamSet, spectrum: Optional[Spectrum] = None,
+                              wl: Optional[np.ndarray] = None) -> TandemOpticsResult:
+    """Level-0 (analytic) optical model: Beer-Lambert absorption, no interference.
+
+    Physically explicit and deliberately crude, so that the difference between
+    levels can be *measured* instead of assumed:
+
+    * a single Fresnel reflection at the air/front interface
+      ``R_0 = ((1 - n_eff) / (1 + n_eff))^2`` with the perovskite's n_inf as the
+      effective index (no ARC, no interference);
+    * the perovskite absorbs ``1 - exp(-alpha d)`` of what enters;
+    * the silicon absorbs ``1 - exp(-alpha_si d_si * path)`` of the remainder;
+    * IQE-M1 collection is applied to both absorbers.
+
+    Closure is exact by construction (A_top + A_bot = 1 - R_0, T = 0).
+    """
+    from ..materials.perovskite import perovskite_alpha_cm1, perovskite_index
+    from ..materials.silicon import silicon_index
+
+    sp = spectrum or reference()
+    grid = TANDEM_WAVELENGTH_NM if wl is None else np.asarray(wl, dtype=float)
+    eg = ps["perovskite_eg_ev"]
+    alpha_p = _perovskite_alpha_from_ps(ps, grid)
+    n_eff = float(ps["perovskite_n_inf"])
+    r0 = ((1.0 - n_eff) / (1.0 + n_eff)) ** 2
+    d_p = ps["perovskite_thickness_nm"] * 1e-7          # nm -> cm
+    entering = 1.0 - r0
+    a_top = entering * (1.0 - np.exp(-alpha_p * d_p))
+    si = silicon_index(grid, tail_nm=25.0)
+    d_si = ps["silicon_thickness_um"] * 1e-4
+    surviving = entering * np.exp(-alpha_p * d_p)
+    a_bot = surviving * (1.0 - np.exp(-si.alpha_cm1 * d_si * ps["silicon_light_trapping"]))
+    transmittance = surviving * np.exp(-si.alpha_cm1 * d_si * ps["silicon_light_trapping"])
+    reflectance = np.full_like(grid, r0)
+    optics = OpticsResult(grid, reflectance, transmittance,
+                          {"perovskite": a_top, "silicon": a_bot},
+                          notes="Beer-Lambert (level-0) optics: no ARC, no interference")
+    iqe_top = np.full_like(grid, ps["collection_efficiency_top"])
+    iqe_bottom = np.full_like(grid, ps["collection_efficiency_bottom"])
+    return TandemOpticsResult(
+        wavelength_nm=grid, reflectance=reflectance, transmittance=transmittance,
+        absorption={"perovskite": a_top, "silicon": a_bot, "arc": np.zeros_like(grid),
+                    "transport": np.zeros_like(grid)},
+        eqe_top=np.clip(a_top * iqe_top, 0.0, 1.0),
+        eqe_bottom=np.clip(a_bot * iqe_bottom, 0.0, 1.0),
+        iqe_top=iqe_top, iqe_bottom=iqe_bottom, optics=optics,
+        model_form="IQE-M1 (level-0 optics)")
 
 
 def _perovskite_alpha_from_ps(ps: ParamSet, wl: np.ndarray) -> np.ndarray:
