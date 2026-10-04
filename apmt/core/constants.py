@@ -15,6 +15,9 @@ C_M_S = 299792458.0            # speed of light [m/s]
 K_B_J_K = 1.380649e-23         # Boltzmann constant [J/K]
 SIGMA_SB_W_M2_K4 = 5.670374419e-8   # Stefan-Boltzmann [W m^-2 K^-4]
 
+# Alias used by the thermal layer (V1.9-C). The Stefan-Boltzmann constant is
+# derived exactly from k_B, h and c: sigma = 2 pi^5 k_B^4 / (15 h^3 c^2).
+
 # Derived convenience constants in PV units
 EV_J = Q_C                      # 1 eV in joules
 K_B_EV_K = K_B_J_K / Q_C        # 8.617333262e-5 eV/K
@@ -25,6 +28,8 @@ T_REF_K = 298.15                # standard reporting temperature (25 degC)
 T_SUN_K = 5778.0                # ASTM AM1.5G effective blackbody temperature
 P_ONE_SUN_MW_CM2 = 100.0        # AM1.5G total irradiance in platform units
 IRRADIANCE_AM15G_WM2 = 1000.37  # ASTM G173-03 nominal integrated irradiance
+
+STEFAN_BOLTZMANN_W_M2_K4 = SIGMA_SB_W_M2_K4     # alias, see derivation note above
 
 # Unit-qualified views (for dimensional checks at use sites)
 ELECTRON_CHARGE = q(Q_C, "C")

@@ -119,6 +119,18 @@ def open_circuit_voltage(model: SubcellModel, temperature_k: float) -> float:
     return V
 
 
+class SubcellNoVocError(RuntimeError):
+    """The subcell has no positive open-circuit voltage at this temperature.
+
+    Physically this happens when the equilibrium recombination current exceeds
+    the photocurrent: the radiative J0 grows roughly as T^3 exp(-Eg/kT), while
+    Jph is fixed by the optics, so above a critical temperature the cell is a
+    net current sink. That is a *model validity boundary*, not a numerical
+    failure, and it must be reported as such rather than raised as an
+    uninterpretable bracket failure.
+    """
+
+
 def _scan_to_voc(model: SubcellModel, temperature_k: float) -> tuple:
     kT = thermal_voltage_v(temperature_k)
     jph = model.jph_ma_cm2
@@ -129,15 +141,25 @@ def _scan_to_voc(model: SubcellModel, temperature_k: float) -> tuple:
         jph / j0_srh + 1.0) + 0.5
 
     def f(v: float) -> float:
-        return float(current_density(model, v, temperature_k)[0])
+        return float(np.atleast_1d(current_density(model, np.array([v]), temperature_k))[0])
 
-    lo, hi = 0.0, v_hi
+    if f(0.0) <= 0.0:
+        # at zero bias the cell already recombines more than it generates:
+        # there is no physical operating point at this temperature
+        raise SubcellNoVocError(
+            f"subcell {model.name!r} has no positive Voc at {temperature_k:.1f} K: "
+            f"J(0) = {f(0.0):.3e} mA/cm2 <= 0 "
+            f"(Jph {jph:.3f}, J0_rad {j0_rad:.3e}, J0_SRH {j0_srh:.3e})")
+
+    lo, hi = 0.0, max(v_hi, 1e-6)
     for _ in range(80):
-        if f(hi) < 0:
+        if f(hi) < 0.0:
             break
         hi *= 1.5
     else:
-        raise RuntimeError(f"could not bracket Voc for subcell {model.name!r}")
+        raise SubcellNoVocError(
+            f"could not bracket Voc for subcell {model.name!r} at "
+            f"{temperature_k:.1f} K (last V = {hi:.3f} V)")
     return bisect(f, lo, hi, tol=1e-11), None
 
 
