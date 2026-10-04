@@ -970,7 +970,7 @@ trapping / Rsh / R_th, reference L5):
 | L1 | 2.360 | 4.283 | MODEL-FORM-CRITICAL | **NO** |
 | L2 | 2.360 | 4.283 | MODEL-FORM-CRITICAL | **NO** |
 | L3 | 0.297 | 0.429 | MODERATE-DIVERGENCE | NO |
-| L4 | 0.000 (5.4e-05 max) | 5.4e-05 | LOW-DIVERGENCE | YES |
+| L4 | 1.6e-05 | 7.5e-05 | LOW-DIVERGENCE | YES |
 | L5 | reference | — | — | YES |
 
 **Reading for V1.9-D.** Only **L4/L5** may be trusted for optimisation: L0–L2
@@ -1174,7 +1174,8 @@ V1.9-C commits (all on `arena/01a102e7-solar`, all pushed):
 | `V1.9-C5` = `de4bd26` | bottom->top coupling, rear-reflection optics, Levels 0-5, concentration unit fix (`apmt/multifidelity/levels.py`, `apmt/optics/*`, `apmt/materials/silicon.py`, `apmt/params/registry.py`, tests) |
 | `V1.9-C6` = `a5aee30` | engine campaign + physics digest (`tools/v19_engine_campaign.py`, `apmt/repro/digest.py`, `data/v19_engine_campaign.json`, `tests/test_v19_batch_surrogate.py`) |
 | `V1.9-C7` = `84dab7b` | pins, CI digest verification, README twin row, master report PART V1.9-C |
-| `V1.9-C8` = `(this commit)` | report commit-hash record + regenerated `reports/.report_sha256` |
+| `V1.9-C8` = `813d8b0` | report commit-hash record + regenerated `reports/.report_sha256` |
+| `V1.9-C9` = `(this commit)` | report correction: L4 divergence row set to the committed artifact value (1.6e-05 / 7.5e-05 pp), hash regenerated |
 
 *(Full hashes are listed in the table; `V1.9-C8` is the self-referencing record
 commit, so its own hash can only appear in `git log` and in the cycle's final
