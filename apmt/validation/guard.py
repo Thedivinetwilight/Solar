@@ -294,7 +294,17 @@ def evaluate_guarded(ps: ParamSet, *, level: str = "L4", model_form: str = "IQE-
     except Exception as exc:                                   # noqa: BLE001
         if raise_on_error:
             raise
-        return SolveRecord(None, _B(tuple()), False, time.perf_counter() - t0, level,
+        # A failed solve must be INVALID in the VERDICT as well, not only in the
+        # ``valid`` flag. An empty bundle (the V1.9-C behaviour) reports status
+        # PASS, so any consumer that inspected ``record.verdict.valid`` instead of
+        # ``record.valid`` would have read an out-of-envelope or crashed solve as
+        # a passed one. A HARD failure record makes the two agree by construction.
+        from .invariants import record as _record
+        bundle = _B((_record("numerical.solve_completed",
+                             InvariantGroup.NUMERICAL.value, False,
+                             severity=Severity.HARD,
+                             message=f"{type(exc).__name__}: {exc}"),))
+        return SolveRecord(None, bundle, False, time.perf_counter() - t0, level,
                            campaign_id=campaign_id, seed=seed, solver=solver,
                            error=f"{type(exc).__name__}: {exc}")
     if optical_bundle is None:

@@ -167,8 +167,16 @@ def _evaluate_warm(ps: ParamSet, level: str, model_form: str, campaign_id: str,
         res = evaluate_with_options(opts, ps, model_form=model_form,
                                     initial_temperature_k=warm_temperature_k)
     except Exception as exc:                                       # noqa: BLE001
-        from ..validation.invariants import InvariantBundle
-        return _SR(None, InvariantBundle(tuple()), False, time.perf_counter() - t0,
+        # a failed solve must be INVALID in the VERDICT too, not only in the flag
+        # (an empty bundle would report status PASS) -- same contract as
+        # apmt.validation.guard.evaluate_guarded
+        from ..validation.invariants import (InvariantBundle, InvariantGroup, Severity,
+                                             record as _record)
+        bundle = InvariantBundle((_record("numerical.solve_completed",
+                                          InvariantGroup.NUMERICAL.value, False,
+                                          severity=Severity.HARD,
+                                          message=f"{type(exc).__name__}: {exc}"),))
+        return _SR(None, bundle, False, time.perf_counter() - t0,
                    level, campaign_id=campaign_id, seed=seed, solver="fast-warm",
                    error=f"{type(exc).__name__}: {exc}")
     verdict = judge_tandem(res, level=level,
