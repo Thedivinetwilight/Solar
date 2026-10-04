@@ -14,7 +14,7 @@ testable — not to manufacture a headline efficiency.
 | Gate implementation consistency | V1.9 audit: the stored `"CLOSED (DEFER)"` state was **not** what the V1.8 evaluator returns on the same evidence (`FAIL`). Both are now reported side by side by `audit_v18_gate_consistency()`. |
 | APMT status | `BLOCKED_BY_BASELINE_VALIDATION` — mechanisms may only be studied as `PRE-GATE / MODEL-OBSERVED / EXPLORATORY` |
 | Baseline data status | `DATA-LIMITED` (no full-stack R/T/A, no external Rs/Rsh, no serial-level device linkage) |
-| Digital twin | running; registry-default tandem PCE **17.91 %** at one sun with the conservative self-heating closure (20.24 % fixed-temperature diagnostic), and 21.02 % for the twin calibrated to digitized EQE — the calibrated variant is a **fit to digitized figure data**, not a validated result |
+| Digital twin | running; registry-default tandem PCE **19.26 %** at one sun with the V1.9-C energy-balance self-heating closure (20.24 % fixed-temperature diagnostic; the legacy all-incident-power-as-heat closure gives 17.91 % and is kept for lineage), and 21.02 % for the twin calibrated to digitized EQE — the calibrated variant is a **fit to digitized figure data**, not a validated result |
 
 ## What is here
 
@@ -76,6 +76,13 @@ Nothing else writes into `data/`. Tests never do.
   carry matching serial identifiers.
 * **No silent rescaling** — EQE curves cannot be rescaled or offset without a
   documented primary source and citation (`NoUnsupportedRescalingError`).
+* **Guard every solve** — V1.9-C makes invariants first-class: every solve, sweep,
+  batch sample and level evaluation returns a PASS/WARN/FAIL/NOT_APPLICABLE record
+  and a HARD failure makes the point INVALID rather than a warning; optimisers and
+  surrogate datasets can therefore only ever see valid physics.
+* **Multi-fidelity levels** — Levels 0–5 (`apmt.multifidelity.levels`) are explicit,
+  documented fidelity changes with measured cross-level divergence; only L4/L5 are
+  predictive (L0–L2 are MODEL-FORM-CRITICAL).
 * **Fail loudly** — `apmt.validation.invariants` raises on R+T+A closure
   failure, EQE out of [0, 1], photon-budget leaks, tandem current violations,
   voltage/limit violations and detailed-balance breaches.

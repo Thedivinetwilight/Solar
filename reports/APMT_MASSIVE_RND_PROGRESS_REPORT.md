@@ -1,10 +1,15 @@
 # APMT / SOLAR — MASSIVE R&D PROGRESS REPORT
 
-**Cycle:** V1.9-A → V1.9-B (engineering hardening → model architecture)
+**Cycle:** V1.9-A → V1.9-B (engineering hardening → model architecture) → **V1.9-C
+(physics engine hardening: invariants, vectorization, thermal rebuild, bottom→top
+coupling, multi-fidelity levels)**
 **Date:** 2026-10-03
 **Branch:** `arena/01a102e7-solar` · **Repository:** github.com/Thedivinetwilight/Solar
 **Commits this cycle:** `abece5f` (V1.9-A1) → `ffe54e0` (V1.9-B1) → `b35cf66` (V1.9-B2) → `7cafe30` (V1.9-B3) → `f77979c` (V1.9-A2) → `4f88ec4` (V1.9-B1: twin physics) → `c4bf52d` (V1.9-B4: self-heating, coupling, OAT, CLI) → `f2dea0a` (V1.9-B5: this report) → `a9091bd` (V1.9-B6: report refresh) → **V1.9-C1: mechanism campaign #1** (§6.9). Branch pushed to `origin/arena/01a102e7-solar`.
 **Base (V1.8 endpoint, untouched):** `b846e2e2f1380f253f876e1ef9606b731dd1ca3d`
+**V1.9-C part:** Part V1.9-C below (starts at §17). It preserves every V1.9-B
+number in place and marks superseded values explicitly where a model form was
+replaced.
 
 This is the single authoritative report for the cycle. Everything below is
 derived from the repository state at the commits listed above; every number is
@@ -491,6 +496,25 @@ undefined convergence status. Six of these are directly exercised by tests.
   (resolves the 1.05 % integral conflict).
 * No confidence interval in this report is derived from scenario spread.
 
+### 11b. V1.9-C supersession notes (V1.9-B numbers preserved above)
+
+* The **self-heated** twin efficiency in V1.9-B (17.9082 %, ΔT 30.0 K, all
+  incident power as heat, PCE 20.2412 % fixed-T) is **superseded for the default
+  model** by the V1.9-C energy-balance closure: **19.2633 %**, ΔT 12.59 K,
+  PCE 20.2417 % fixed-T. The V1.9-B value remains reproducible
+  (`evaluate_tandem(ps, thermal_model="simple")` → 17.9085 %) and is kept for
+  lineage, not as a current model result. The README twin row was updated to show
+  both closures.
+* The V1.9-B registered-range finding (Tj ≈ 454 K) is **resolved**, not deleted:
+  the corner is reproducible under the legacy closure (R_th ≈ 1.556 K cm²/mW →
+  453.75 K, PCE 1.97 %) and is unreachable under the energy balance (337.6 K,
+  17.17 %) because the missing radiative pathway carries ~51 % of the heat load.
+  See §23.
+* The calibrated twin (21.0199 % fixed-T / 23.8146 % with the thermal gain) is
+  unchanged by V1.9-C: the calibration path uses the same physics and its
+  artifact hash (`data/v19_calibration.json` sha256 `6da5a9e3…`) still matches its
+  pin, verified by `tools/ci_checks.py`.
+
 ## 12. Computational cost
 
 | Task | Time | Notes |
@@ -500,7 +524,13 @@ undefined convergence status. Six of these are directly exercised by tests.
 | calibration (6 parameters, 765 residuals) | 0.7 s | least squares + finite-difference Jacobian |
 | OAT scan (114 solves) | 123 s | trivially parallelizable; planned |
 | mechanism campaign #1 (8 + 30 + 96 solves) | 124 s | 1.08 s per solve |
-| test suite | 12.6 s | 61 passed, 1 skip |
+| test suite | 12.6 s | 61 passed, 1 skip (V1.9-B) |
+| fast tandem solve (V1.9-C) | 61 ms | vectorised Newton + table inversion, cold cache |
+| fast tandem solve (V1.9-C, warm cache) | 4–40 ms | per level (L2 → L5) |
+| self-heated solve (V1.9-C) | ≤ 0.05 s | 4–6 electrical solves in the thermal loop |
+| reference oracle solve (V1.9-C) | 32.4 s | preserved V1.9-B scalar bisection |
+| engine campaign (all sections) | 1,696 s | dominated by the 3-point reference benchmark |
+| test suite (V1.9-C) | 81 s | 142 passed, 1 skip (reference-oracle comparisons) |
 
 No artifact explosion: 6 pinned artifacts totalling ≈50 kB; no per-run output
 directories, no near-duplicate files.
@@ -535,10 +565,14 @@ python data/s32_digitize_v18.py --write              # historical digitization a
    a 200 K rise at one sun; the LHS envelope therefore contains unphysical
    corners. Re-justify the bound (or add an explicit physical-envelope guard)
    in V1.9-C.
-6. **Not yet implemented:** global optimization, Sobol variance decomposition,
-   surrogate models, UQ engine, VOI engine, synthetic experiment lab, discovery
-   engine, multi-fidelity Levels 0–5, bottom→top luminescent coupling, refined
-   thermal energy balance, and the autonomous campaign loop. These are V1.9-C…F.
+6. ~~**Not yet implemented:** … multi-fidelity Levels 0–5, bottom→top luminescent
+   coupling, refined thermal energy balance …~~ **V1.9-C delivered** the refined
+   thermal energy balance (§23), bottom→top coupling (§24), Levels 0–5 with
+   divergence analysis (§25), the invariant/guard framework (§19), the vectorised
+   solver + batch API (§21/§28), inert screening 2.0 (§26), ablation, limit and
+   convergence tests (§27). Still not implemented (V1.9-D…F): global optimization,
+   Sobol variance decomposition, surrogate models, UQ/VOI engines, the synthetic
+   experiment lab, the discovery engine and the autonomous campaign loop.
 
 ## 15. Next recommended direction
 
@@ -569,3 +603,593 @@ validated. Every efficiency figure above is a MODEL-COMPUTED value under stated
 assumptions; the only experimentally anchored numbers are the digitized Fig. S32
 integrals and the source-reported certified values, each labelled DIGITIZED or
 HANDOFF-QUOTED respectively.
+
+---
+
+# PART V1.9-C — PHYSICS ENGINE HARDENING, INVARIANT ENFORCEMENT, VECTORIZATION, THERMAL REBUILD, BOTTOM→TOP COUPLING, MULTI-FIDELITY LEVELS
+
+**Cycle:** V1.9-C · **Date:** 2026-10-04 · **Branch:** `arena/01a102e7-solar`
+**Commits:** see §31 (V1.9-C commit map). **Base:** `f47aede` (V1.9-C1, unchanged) ← `b846e2e2…` (V1.8 endpoint, untouched).
+**Status of everything in this part: PRE-GATE / MODEL-OBSERVED / EXPLORATORY.**
+No experimental claim is made anywhere in V1.9-C. The baseline gate remains
+**CLOSED** and was not touched (§7.1 is still the current gate state).
+
+## 17. What V1.9-C changed, and why
+
+V1.9-C is an *engine* cycle: the physics model forms were not rewritten to chase
+efficiency — they were made auditable, faster, and harder to fool. Five
+deliverables:
+
+1. **Invariants became first-class** with a machine-readable verdict on every
+   solve, and a **guard** that makes any HARD violation INVALID (not a warning).
+2. **The tandem solve was vectorised** against a preserved scalar **reference
+   oracle**, with quantified agreement.
+3. **The thermal closure was rebuilt** as a solved energy balance (conduction +
+   radiative cooling), and the V1.9-B ≈454 K corner was investigated to a
+   conclusion.
+4. **Bottom→top coupling was implemented and measured** — and found to be
+   physically absent at these bandgaps; the non-existence is demonstrated with
+   numbers rather than asserted.
+5. **Multi-fidelity Levels 0–5** with cross-level divergence classification,
+   inert-parameter screening 2.0, ablation, limit tests and convergence tests.
+
+Three defects were found *by the new machinery itself* (all fixed, all with
+regression tests): the concentration PCE unit bug (§20), the fixed-temperature
+thermal reporting inconsistency (§19), and the electrical validity-envelope
+failure at extreme corners (§23). Two dead-parameter defects were found by
+screening 2.0 and fixed by wiring the parameters to the physics that they claim
+to model, not by declaring them inert (§26).
+
+## 18. Engine audit (item 1) — input → physics → result trace
+
+The audit walked every documented path rather than the intended one.
+
+**Full trace of one evaluation** (`evaluate_tandem(ps, solver="fast", thermal_model="energy_balance")`):
+
+| Stage | Code | Inputs | Outputs | Cost |
+| --- | --- | --- | --- | --- |
+| spectrum | `apmt/spectra/reference.py` | ASTM G173 npz, `spectrum_shift_nm` | `Spectrum` (191 pts, 300–1250 nm) | 0 (cached) |
+| optics | `apmt/optics/stack.py` + `tmm.py` | ARC/parasitic/TCO layers, thicknesses, `rear_reflectance` | R/T/A per layer, EQE, Jsc_subcell, absorbed power | 11 ms (lru-cached) |
+| subcell model | `apmt/device/subcell.py`, `recombination.py` | Eg, thickness, lifetime/SRV or calibrated J0 override, Rs/Rsh | J(V) with two-diode + shunt | — |
+| tandem solve | `apmt/device/tandem.py::solve_tandem_fast` | two subcell tables, coupling flags | Voc, MPP, Jsc (current-source limit), FF, PCE | 4.2 ms |
+| thermal | `apmt/device/thermal.py::solve_equilibrium` | absorbed power, T→P_elec callback, R_th, ε | Tj, balance residual, stability derivative | 6–7 electrical solves |
+| invariants | `apmt/validation/guard.py` | result + optics + parameter point | `InvariantBundle` (PASS/WARN/FAIL/NA) | < 1 ms |
+
+**Bottleneck found by profiling (cProfile, V1.9-B engine):** 67,462 scalar
+`current_density` calls and 1,607 `bisect` calls per self-heated solve — the
+scalar bisection per bias point was the whole cost. That profile motivated the
+vectorised Newton solver (§21) and the reference/oracle split (§22).
+
+**Paths audited and their state after V1.9-C:**
+
+| Path | Invariants wired? | Guarded? | Notes |
+| --- | --- | --- | --- |
+| forward solve (`evaluate_tandem`) | YES (`detail["invariants"]`, `detail["solve_valid"]`) | via `evaluate_guarded` | every solve now carries a verdict |
+| sweeps / limit tests | YES | YES | corners outside the validity window return INVALID |
+| calibration | YES | YES | residuals use guarded solves; an INVALID solve cannot enter the objective |
+| LHS / batches | YES | YES (`device/batch.py`) | invalid rows are excluded from datasets and counted |
+| stages 0–5 (`multifidelity/levels.py`) | YES | YES | switches are real: a guarded L2 solve runs L2 physics |
+| synthetic data generation | YES | YES (`dataset()`) | "no invalid physics in training data" is enforced, not documented |
+
+**Audit finding (a real one):** before this cycle `evaluate_guarded(level="L2")`
+recorded `L2` in its metadata but evaluated **full-physics L4**, because the
+guard called `evaluate_tandem` directly. Any campaign that trusted the recorded
+level was therefore mislabelled. Fixed: the guard now dispatches through
+`evaluate_level`/`evaluate_with_options`, and
+`tests/test_v19_engine.py::test_batch_api_and_serial_guarded_agree` pins the
+equality of the batch and serial paths *including their switch dictionaries*.
+
+## 19. Invariant enforcement (items 2–3)
+
+**Design.** `apmt/validation/invariants.py` now carries a first-class layer
+alongside the V1.9-B checks (both retained, one registry):
+`InvariantStatus` (PASS/WARN/FAIL/NOT_APPLICABLE), `Severity` (HARD/SOFT),
+`InvariantRecord`, `InvariantBundle` (`.valid` ⇔ no HARD FAIL), and a `CHECKS`
+registry of 23 named checks. The V1.9-B `InvariantReport` shape gained
+`.status`/`.to_record()` so both generations are consumable uniformly.
+
+**Families and examples** (all machine-readable, all in the verdict):
+
+| Group | Checks | Severity policy |
+| --- | --- | --- |
+| optical | R+T+A closure over all stack layers, bounded R/T/A, wavelength grid integrity (finite/positive/monotone/duplicate-free/min-points), photon budget, radiometric power conservation | HARD |
+| electrical | current continuity (`Jsc ≤ min(Jsc_subcells)`), range/absurdity bounds, strictly-positive radiative J0, J0 channel sum, Rs ≥ 0 / Rsh > 0, shunt direction, Voc ≤ ΣEg, Vmp ≤ Voc, radiative-limit consistency | HARD (shunt direction SOFT) |
+| thermal | energy balance (abs 1e-3 mW/cm² or rel 1e-6), stability `d(loss)/dT > d(heat)/dT`, equilibrium convergence, electrical-validity envelope, temperature envelope, fixed-T declaration consistency | balance/stability/convergence/envelope HARD; temperature envelope SOFT |
+| numerical | finiteness (NaN/Inf), solver convergence flag, monotonicity, non-negativity | HARD |
+| data | units/range/dimension checks on grids and curve arrays | HARD |
+
+**Guard.** `apmt/validation/guard.py` builds the verdict, attaches it to the
+result (`detail["invariants"]`, `detail["solve_valid"]`) and returns a
+`SolveRecord` carrying the parameter point, level, solver, campaign id, seed,
+runtime and error text. `evaluate_guarded` never raises: a solver exception
+becomes an INVALID record with the error preserved.
+
+**Proof that the guard is not decoration** (each case has a test):
+a 141.93 % "efficiency" (the V1.9-B coupling-scale pathology) → HARD
+`electrical.radiative_limit` FAIL; Jsc = 0, FF = 0, Vmp > Voc, NaN PCE, and
+Jsc = 1e6 mA/cm² → INVALID; j0_RAD = 0 → INVALID (a zero radiative channel would
+silently disable the radiative ceiling); thermal residual above tolerance →
+INVALID.
+
+**Defect caught by the invariants:** the fixed-temperature diagnostic reported
+the *simple-closure* junction temperature (328.15 K) while the physics had been
+solved at 298.15 K. The new `thermal.fixed_temperature_declared` check failed
+immediately; the reporting is now consistent (`Tj = T_amb`, no balance claimed).
+
+## 20. Unit & dimension audit (item 4)
+
+Canonical internal units, checked by
+`tests/test_v19_multifidelity.py::test_*_units`: wavelength and thickness **nm**
+(cm only inside absorption coefficients, 1 nm = 1e-7 cm), temperature **K**,
+irradiance **suns** (1 sun = 100 mW/cm²), power density **mW/cm²**, current
+density **mA/cm²**, resistance-area **Ω·cm²** (thermal **K·cm²/mW**), energy
+**eV** internally with `EV_J = 1.602176634e-19` and `K_B_EV_K = 8.617333262e-5`,
+σ_SB = 5.670374419e-8 W/m²/K⁴ (= 5.670374419e-9 mW/cm²/K⁴, cross-checked against
+2π⁵k⁴/15h³c² to 3.3e-11 and against the measured radiative loss).
+
+**BUG FOUND AND FIXED — the concentration PCE unit error.** `pce_pct` was
+computed as `P_out / 100 mW cm⁻²` at *every* irradiance, i.e. it was a power
+density mislabelled as a percentage, scaling linearly with concentration:
+
+| suns | `pce_pct` before | `Jsc` (mA/cm²) | correct PCE after fix |
+| --- | --- | --- | --- |
+| 0.1 | 1.4156 | 1.573 | 14.156 % |
+| 1.0 | 20.2417 | 15.727 | 20.242 % (bit-identical) |
+| 2.0 | 41.4665 | 31.453 | 20.733 % |
+| 5.0 | **102.9093** | 78.633 | 20.582 % |
+
+The correct definition is `PCE = P_out / (suns · 100 mW/cm²) · 100`, which is
+`P_out / suns`. **At exactly one sun the correction is the identity**, so no
+pinned V1.8/V1.9-B number changes; verified bit-for-bit
+(`20.24165864` before and after). **Blast radius checked and reported:** no
+V1.9-B artifact sampled `irradiance_suns` (0 occurrences in
+`v19_oat_sensitivity.json`, `v19_mechanism_campaign.json`,
+`v19_calibration.json`), so the historical results are unaffected; the bug only
+became reachable when the new thermal sweep varied irradiance. Downstream
+consequences also fixed: the guard's current limits and radiative ceiling are now
+concentration-aware (`Jsc` at 5 suns legitimately exceeds the per-sun absurdity
+bound), and the thermal extractor's `P_elec = PCE·suns·100/100` now yields the
+correct mW/cm².
+
+**Regression tests added:** `test_pce_is_a_percentage_at_every_concentration`,
+`test_currents_scale_with_concentration_and_limits_allow_it`,
+`test_radiative_ceiling_is_normalised_by_concentration`.
+
+## 21. Vectorisation and performance (items 5, 20, 27)
+
+**What changed.** (a) `subcell_table`: one vectorised Newton solve for the whole
+V-grid instead of a per-point bisection; (b) `solve_tandem_fast`: the series
+constraint is solved on a shared current grid with table inversion
+(`np.interp`), and the luminescent-coupling fixed point is vectorised;
+(c) optics are `lru_cache`d and shared across solves that only change electrical
+or thermal parameters; (d) `ElectricalPowerExtractor` memoises the thermal loop's
+trial evaluations; (e) the thermal Newton step uses the analytic loss derivative
+(one electrical solve per iteration); (f) `apmt/device/batch.py` provides an
+N→N batch API with warm-started thermal solves and optional worker processes.
+
+**Measured (see `data/v19_engine_campaign.json` §benchmark; 2 vCPU sandbox):**
+
+| Quantity | Reference oracle | Fast solver | Factor |
+| --- | --- | --- | --- |
+| single self-heated solve | 32.72 s | 0.04558 s | **718×** |
+| batch of 3 (energy balance) | 603.3 s | 0.5001 s | **1206×** |
+| peak Python allocation | 1.40 MB | 0.57 MB | 0.41× |
+| batch API (24-point LHS, L4) | — | 1.16 s = 20.8 solves/s | warm-started 23/24 |
+
+**Against the item-5/27 target.** The baseline that defines the 10× target is the
+measured V1.9-A campaign cost of **1.08 s per solve** (recorded in §12). The final
+fast solver does one self-heated solve in **45.6 ms → 23.7×** versus that
+baseline (718× versus the preserved oracle, which is a different, slower
+reference), and the 24-point batch API sustains **20.8 solves/s** (≥ 260× the
+baseline throughput). Both clear the target. The numbers are machine-specific; the
+reproducible quantity is the **ratio** and the agreement (§22). No blind
+parallelism is used: the batch API runs serially by default and only offers
+`workers>1` for campaigns.
+
+**Honest limit:** the speedup is not free of physics — the fast path differs from
+the oracle only by discretisation (§22), but it depends on the tabulated
+monotone subcell J(V) inversion, which is exactly the part the oracle does not
+assume. `tests/test_v19_engine.py::test_fast_solver_is_actually_vectorised`
+asserts the fast path does not fall back to scalar bisection (< 20 scalar
+inversions per solve, measured 4).
+
+## 22. Reference oracle and the agreement contract (item 6)
+
+The V1.9-B scalar solver is preserved unchanged as `solve_tandem_reference` and
+is the regression oracle. Both solvers extract their metrics through the *same*
+function (`curve_metrics_by_current`), so a comparison isolates numerics rather
+than two definitions of the operating point.
+
+| Ensemble | max ΔPCE (pp) | ΔJsc (mA/cm²) | ΔVoc (V) | ΔFF | Tolerance |
+| --- | --- | --- | --- | --- | --- |
+| nominal point | 8.9e-06 | 7.6e-11 | 5.9e-07 | 2.3e-07 | PCE 1e-3, Jsc 1e-3, Voc 1e-4, FF 1e-4 |
+| 3-point LHS (benchmark) | 8.88e-06 | 7.64e-11 | 5.86e-07 | 2.26e-07 | same |
+| **12-point LHS (pinned `oracle_agreement` section)** | **8.61e-06** | **9.85e-11** | **8.16e-07** | **2.67e-07** | same; 12/12 within tolerance |
+| edge cases (Rs, Rsh, coupling, bandgaps, trapping, rear mirror) | < 1e-4 (×5 tolerance) | — | — | — | parametrised in `tests/test_v19_engine.py` |
+
+**Jsc definition (documented change).** Jsc is reported as the physical
+current-source limit `min(Jsc_top, Jsc_bottom)`. The old value was read off the
+J(V) curve at V = 0, which is ill-conditioned on a series tandem: the new
+diagnostic `jsc_bias_sensitivity_ma_cm2_per_v = 393.2 mA cm⁻² V⁻¹` means a
+20 mV bias error would move that intersection by ≈7.9 mA/cm². The curve endpoint
+is still reported (`jsc_curve_grid_endpoint_ma_cm2`) so the change is auditable;
+PCE did not move (+0.0005 pp), FF moved 0.8567 → 0.8507 because it is now taken
+from the same common-current representation.
+
+**Discretisation floor (honest number).** Solver-vs-solver agreement (1e-11
+mA/cm²) is *three orders below* the grid discretisation floor: at the production
+5 nm wavelength grid vs 2.5 nm, ΔJsc_top = 2.41e-02 mA/cm² (0.153 %) and
+ΔJsc_bottom = −2.27e-02 mA/cm². Any comparison of *models* (levels, mechanisms,
+couplings) at the 1e-3 mA/cm² level must therefore be read as "below the
+discretisation floor", not as a physical difference.
+
+## 23. Thermal rebuild and the 454 K investigation (item 7)
+
+**What changed.** The V1.9-B closure ("all incident power becomes heat", no
+radiative path) is retained as `simple_temperature` for lineage, and a solved
+energy balance is now the default:
+
+    Q(Tj) = f_heat · P_absorbed − P_elec(Tj)          (heat load)
+    L(Tj) = (Tj − T_amb)/R_th,eff + ε·σ·(Tj⁴ − T_amb⁴)  (loss)
+    equilibrium: L(Tj) = Q(Tj),  stable ⇔ dL/dT > dQ/dT
+
+Units: mW/cm², K, σ in mW/cm²/K⁴, `f_heat = absorption_heat_fraction` (default
+1.0, conservative: photon escape above the gap is *not* credited as cooling).
+Solved by a safeguarded Newton with an analytic loss derivative and a
+bisection bracket (tolerance 1e-4 mW/cm²); initial guess from the simple closure.
+
+**Default operating point (1 sun, T_amb 298.15 K):**
+
+| Quantity | Value |
+| --- | --- |
+| absorbed optical power | 68.4961 mW/cm² |
+| extracted power (PCE 19.2633 %) | 19.2633 mW/cm² |
+| heat load Q | 49.2328 mW/cm² |
+| conduction | 41.9759 mW/cm² (85.3 %) |
+| radiative | 7.2569 mW/cm² (14.7 %) |
+| junction temperature | **310.7428 K** (ΔT 12.5928 K) |
+| balance residual | 6.0e-05 mW/cm² (tolerance 1e-4; invariant bound 1e-3) |
+| stability margin dL/dT − dQ/dT | 3.76 mW cm⁻² K⁻¹ (dQ/dT = 0.182) |
+| PCE (self-heated, energy balance) | 19.2633 % |
+
+For comparison, the legacy closure at the same parameters gives ΔT = 30.0 K and
+PCE 17.9082 % — i.e. the V1.9-B self-heated number was **pessimistic by ≈1.36 pp
+of efficiency** because two thirds of the extracted power was being conducted as
+if it were heat and no radiative cooling existed.
+
+**Stability and uniqueness** (`data/v19_thermal_investigation.json`): over the
+irradiance × R_th grid (0.1/1/5 suns × 0.05/0.3/2.0 K cm²/mW), dQ/dT =
+0.017–0.863 mW cm⁻² K⁻¹, dL/dT = 1.07–20.6 mW cm⁻² K⁻¹, margin +1.05 to +20.5
+mW cm⁻² K⁻¹, residuals monotone in every case. The heat load *rises* with
+temperature (P_elec falls), and the loss term rises faster — that is what makes
+the equilibrium unique.
+
+**The 454 K corner — conclusion with arithmetic.** The V1.9-B finding is
+reproduced exactly and explained:
+
+| R_th (K cm²/mW) | legacy closure Tj | legacy PCE | energy balance Tj | energy balance PCE | radiative share |
+| --- | --- | --- | --- | --- | --- |
+| 0.30 (default) | 328.15 K | 17.9085 % | 310.74 K | 19.2633 % | 14.7 % |
+| 1.00 | 398.15 K | 9.7543 % | 329.21 K | 17.8261 % | 38.7 % |
+| 1.556 | **453.75 K** | 1.9685 % | 337.60 K | 17.1699 % | 50.6 % |
+| 2.00 (registered max) | 498.15 K (no subcell Voc at 498.1 K) | — | **342.21 K** | 16.8084 % | 57.4 % |
+
+Verdict: the 454 K corner was **reachable under the legacy closure, was not a
+numerical artefact, and is no longer reachable** — the missing pathway was
+radiative cooling, which carries 51 % of the heat load at the same R_th and 57 %
+at the registered maximum. At 498 K an emissive front surface radiates
+≈339 mW/cm² against a 100 mW/cm² heat load, so the temperature simply cannot
+exist in a closed balance. The registered range is **kept** (per the standing
+rule that a registered assumption is not silently narrowed); the upper bound is
+now bounded by physics rather than by a missing term, and it is flagged
+EXPLORATORY in the artifact.
+
+**Validity envelope (new, and it matters).** The electrical parameterisation
+(Varshni bandgaps, n_i, SRH slab, calibrated J0) is registered for
+`temperature_k ∈ [220, 400] K`. The thermal solve must evaluate trial
+temperatures outside that window to bracket the root; it substitutes the
+conservative `P_elec = 0` there (auditable: `electrical_envelope` in the thermal
+record) and **refuses to report** a converged junction temperature outside the
+window (`ModelValidityError` → INVALID solve). Consequences: 3 of the 24
+sweep corners (5 suns at the higher R_th values) are INVALID, and the legacy
+2.0 K cm²/mW point at 498 K — which V1.9-B's report-space claim relied on — could
+not be reported at all by a guarded model today. This is the honest outcome: a
+number outside the model's validity is worse than no number.
+
+**Heat-ledger transparency.** The model does not separate thermalisation,
+non-radiative recombination and luminescent escape: all of the absorbed-minus-
+extracted power is treated as heat, so the junction temperature is an **upper
+bound** for a given R_th. Removing any passive cooling path would raise the
+temperature and was not done; the assumption is conservative in the safe
+direction.
+
+## 24. Bottom→top coupling (item 8)
+
+**Definition and units.** `luminescent_coupling_bottom_to_top` (β_bt, 0–0.5) is
+the fraction of the bottom cell's *radiative* recombination current that is
+re-absorbed by the top cell. The physical availability of the channel is
+`f_up = ∫_{E ≥ Eg_top} φ_bb(E; T) dE`, computed by `emission_fraction_above_gap`
+(Boltzmann/Planck integral, dimensionless), and the current transferred is
+`β_bt · f_up · J0_rad,bottom · expm1(V_bottom / kT)`, exactly zero at short
+circuit. Sign convention: positive means current *added to the top cell*.
+Limiting behaviour: f_up → 0 as Eg_top − Eg_bottom grows; the term is zero for
+β_bt = 0 and vanishes at V = 0.
+
+**Measured availability:** f_up = 3.9e-10 at the nominal gaps (ΔEg = 0.603 eV),
+which is the expected `exp(−ΔEg/kT)` suppression.
+
+**Impact (defaults, L4):** at the registered maximum β_bt = 0.5 the response is
+**+4.7e-08 pp** even at the most favourable bandgap corner of the registered box
+(Eg_top = 1.40 eV, f_up = 1.0e-5) — eight orders below the discretisation floor.
+
+**Ablation (item 17, 5-point LHS × 2⁴ configurations):**
+
+| Mechanism switched OFF | mean ΔPCE (pp) | range (pp) | sign-consistent |
+| --- | --- | --- | --- |
+| thermal feedback | **−2.1997** | −3.2722 … −0.8316 | YES |
+| Rs/Rsh network | **−0.8051** | −0.9992 … −0.5646 | YES |
+| SRH/surface channel | −0.0025 | −0.0075 … −0.0001 | YES |
+| luminescent coupling (both directions) | **0.0000** | 0.0000 … 0.0000 | n/a (exactly zero) |
+
+Interactions (second-order factorial residuals, no causal claim):
+thermal × resistance **+0.1153 pp mean (max 0.1968)** — a genuine second-order
+term: self-heating lowers the extracted power, which changes the resistive loss.
+All other pairs ≤ 7.5e-03 pp.
+
+**Conclusion (a valid answer is "it does not exist here").** The channel is
+implemented, differential-tested against the oracle, bounded, sign-correct and
+provably *live code* (a forced availability of 0.1 changes Voc by > 1e-6 V in
+`test_bottom_to_top_coupling_is_live_not_dead_code`). It is **physically absent**
+at these bandgaps: a 1.12 eV silicon cell cannot emit above a 1.68 eV perovskite
+gap with any appreciable probability, and adding current to a *non-limiting*
+subcell cannot help a TOP-LIMITED tandem anyway. Both mechanisms are therefore
+reported as structurally present, physically inert, and quantified — not as
+"no effect".
+
+## 25. Multi-fidelity Levels 0–5 (items 9–10)
+
+Each level is an explicit, documented **fidelity change (a model term removed or
+restored)** — never a parameter change: `apply_level` returns the parameter set
+untouched and the switches are recorded in `detail["level_switches"]`.
+
+| Level | Optics | SRH | Rs/Rsh | Thermal | Coupling | Grid | PCE % | Jsc | Voc | FF | Tj (K) |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| L0 | Beer-Lambert | — | — | fixed | — | 2001/600 | 19.881 | 14.816 | 1.5114 | 0.8878 | 298.15 |
+| L1 | TMM | — | — | fixed | — | 2001/600 | 21.208 | 15.727 | 1.5152 | 0.8900 | 298.15 |
+| L2 | TMM | ✓ | — | fixed | — | 4001/1200 | 21.208 | 15.727 | 1.5153 | 0.8900 | 298.15 |
+| L3 | TMM | ✓ | — | balance | — | 4001/1200 | 20.190 | 15.727 | 1.4550 | 0.8824 | 310.51 |
+| L4 | TMM | ✓ | ✓ | balance | ✓ | 4001/1200 | 19.263 | 15.727 | 1.4516 | 0.8438 | 310.74 |
+| L5 | TMM | ✓ | ✓ | balance | ✓ | 8001/2400 | 19.263 | 15.727 | 1.4516 | 0.8438 | 310.74 |
+
+**Divergence classification** (12-point LHS ensemble in Eg / thickness / ARC /
+trapping / Rsh / R_th, reference L5):
+
+| Level | mean \|ΔPCE\| (pp) | max \|ΔPCE\| (pp) | worst class | predictive? |
+| --- | --- | --- | --- | --- |
+| L0 | 2.127 | 4.257 | MODEL-FORM-CRITICAL | **NO** |
+| L1 | 2.360 | 4.283 | MODEL-FORM-CRITICAL | **NO** |
+| L2 | 2.360 | 4.283 | MODEL-FORM-CRITICAL | **NO** |
+| L3 | 0.297 | 0.429 | MODERATE-DIVERGENCE | NO |
+| L4 | 0.000 (5.4e-05 max) | 5.4e-05 | LOW-DIVERGENCE | YES |
+| L5 | reference | — | — | YES |
+
+**Reading for V1.9-D.** Only **L4/L5** may be trusted for optimisation: L0–L2
+diverge by up to 4.3 pp (temperature-free electrical models *overestimate* this
+device by ≈2 pp), and L3 by 0.43 pp. Any campaign that mixes levels would be
+optimising model form, not physics. Runtime per level makes the trade-off
+explicit: L0–L2 ≈ 4–6 ms, L3 ≈ 40 ms, L4 ≈ 48 ms, L5 ≈ 54 ms per point
+(single-thread, warm cache).
+
+## 26. Inert-parameter screening 2.0 (item 11)
+
+Every one of the 41 screenable registered parameters is perturbed in both
+directions (or against its registered bounds when the default is zero) at *every*
+level; a PCE response below 1e-6 pp is INERT. Inertness is classified three ways:
+explained by a fidelity switch or by the active model form, physically suppressed
+(with a falsification probe), or a **defect**.
+
+| Level | active | inert | switch/model-form explained | physically suppressed | **unexpected (defect)** |
+| --- | --- | --- | --- | --- | --- |
+| L0 | 14 | 27 | 27 | 0 | **0** |
+| L1 | 21 | 20 | 20 | 0 | **0** |
+| L2 | 25 | 16 | 16 | 0 | **0** |
+| L3 | 32 | 9 | 8 | 1 | **0** |
+| L4 | 35 | 6 | 5 | 1 | **0** |
+| L5 | 35 | 6 | 5 | 1 | **0** |
+
+**Two defects found and fixed** (found by the screener in the first run — this is
+the point of the tool):
+
+1. `absorption_heat_fraction` was **structurally dead** after the thermal rebuild:
+   the energy balance ignored it. Fixed by wiring it into the heat load
+   (f_heat·P_absorbed). Verified response: f_heat 0.5 / 0.8 / 1.0 →
+   Tj 301.83 / 307.19 / 310.74 K, PCE 19.956 / 19.539 / 19.263 %.
+2. `luminescent_coupling_bottom_to_top` is inert at the nominal point. It is not
+   dead code; it is **physically suppressed**, and the screener now proves it with
+   a falsification probe: at the best corner of the registered box (Eg_top =
+   1.40 eV, β = 0.5) the on/off difference is 4.7e-08 pp with an availability of
+   1.0e-05, while an explicit code-liveness test with a forced availability
+   changes Voc. A declared-active-but-inert parameter with an *unexplained*
+   cause remains a defect and is reported as one.
+
+Honest screen limitation (carried from V1.9-B and re-confirmed): a ±20 % local
+perturbation cannot see weak-but-real effects that only appear far from the
+default point, nor non-monotone optima. The screener therefore reports the probe
+point it used, and near-zero responses are never written as "no effect".
+
+## 27. Limit tests, convergence tests, ablation (items 12, 13, 17)
+
+**Physical limit tests** (1 sun unless stated): tiny shunt (Rsh 50 Ω cm²) →
+PCE 3.090 % / FF 0.250; strong parasitic absorption (k_TCO ×20) → 18.638 %;
+weak top absorption (α at the registered lower bound) → 6.787 % / Jsc 5.759;
+thin top cell (150 nm) → 9.532 % / Jsc 7.887; no thermal resistance (0.05) →
+20.059 % / Tj 300.51 K (approaches the fixed-T value 20.242 %); extreme
+registered R_th (2.0) → 16.808 % / Tj 342.21 K; ideal rear trapping (30×) →
+19.429 %; tuned ARC + rear mirror (R = 0.98) → Tj 310.59 K with Jsc unchanged
+(top-limited); SRH disabled (the ideal single-diode limit, L1) → Voc 1.5152 V vs
+1.4550 V with SRH (L3). Every direction matches the physical expectation, and no
+limit case is rejected by the guard.
+
+**Convergence tests:** the subcell table / curve grid (PCE stable to 1.1e-05 pp
+from 4001 table points and 1200 curve points — the production setting on the
+finest 16001/4800 reference); the wavelength grid (closure 2.2e-16 at every
+resolution ≥ 5 nm; ΔJsc_top = 2.4e-02 mA/cm² between 5 nm and 2.5 nm — the
+documented discretisation floor, §22); thermal tolerance (residual 6e-05 vs 1e-04
+specified); thermal iteration count (≤ 11, ≤ 43 electrical evaluations with
+memoisation; 6–7 typical).
+
+**Ablation** is in §24 (it shares the mechanism table). Its structure answers
+item 28 for every mechanism with WHAT CHANGED / WHY / PHYSICS / PROVING TEST /
+LIMIT / WHAT RESULT CHANGED / HOW MUCH / ROBUST / MODEL-DEPENDENT — see the
+per-mechanism blocks in §24 and §23.
+
+## 28. Batch API, surrogate readiness, reproducibility (items 18, 19, 21, 22, 23)
+
+**Batch API** (`apmt/device/batch.py`): `batch_evaluate(matrix, names, level=…)`
+→ N guarded `SolveRecord`s (order-preserving, optionally multi-process),
+`BatchSummary` (wall clock, solves/s, failure counts by invariant name, warm-start
+count), `dataset()` (VALID rows only, with an explicit rejection ledger), and
+`lhs_batch()` convenience. Measured throughput: L0 181.5, L1 158.0, L2 231.1,
+L3 23.6, L4 22.2, L5 18.5 guarded solves/s on 2 vCPU. Invalid solves are
+returned and flagged, never dropped silently; `dataset()` refuses to train on
+them and records why.
+
+**Reproducibility metadata:** every campaign artifact embeds python/numpy,
+platform, git commit + dirty flag, a fingerprint of the 43 registry defaults
+(`efccfb25…`), the registry size, the topology and the unit table. Pinned
+artifacts stay byte-deterministic (timings printed, never written), verified by
+double-run sha256 equality (`data/v19_thermal_investigation.json`
+`043a9bea…` twice). The engine-campaign artifact additionally carries a
+**physics digest** (one shared rule in `apmt/repro/digest.py`: sha256 over the
+artifact with the benchmark and environment blocks removed and every
+timing-valued key stripped recursively — so it is stable across machines and
+across reruns) so that its physics is verifiable even though wall-clock values
+are machine-specific. Timing-independence is itself tested: the suite injects a
+fake `wall_clock_s` and asserts the digest does not move, then perturbs a PCE and
+asserts it does (`tests/test_v19_batch_surrogate.py`).
+
+**Pinned vs non-byte-deterministic artifacts (explicit rule).** Only artifacts
+that reproduce byte-for-byte are sha256-pinned in
+`manifests/v1.9_artifact_pins.json`: the seven V1.9-B artifacts plus
+`data/v19_thermal_investigation.json`. The engine-campaign artifact is *not*
+byte-reproducible (it contains wall clocks and the git commit of the run) and is
+therefore pinned by its **physics digest**
+`278636bce59415d6e17f905f4d50c8801a08f02733ac627f583c0248201bc108` in the
+`digests` block of the same manifest; `tools/ci_checks.py` recomputes the digest
+from the committed file on every CI run, and `tests/test_v19_batch_surrogate.py`
+re-derives it independently. Regenerating the artifact at a different commit
+therefore changes bytes but not the digest, which is the quantity that has to
+stay invariant. The `oracle_agreement` section (12-point LHS, reference vs fast)
+is deterministic and is inside the digest.
+
+**Artifact discipline:** four compact JSON artifacts for the whole cycle
+(≤ 340 kB total), no per-point files, no new directories, no compressed dumps of
+per-sample data. Tests are non-mutating: computation, serialization and CLI are
+separate functions, and every generator writes only its own single artifact on
+explicit `--write`.
+
+## 29. Calibration hardening (item 14) — status
+
+Carried from V1.9-B and unchanged in V1.9-C, with the new guard now enforced on
+its residuals: fitting uses only the documented EQE targets (never forbidden
+measurements); scenario values are never fitted or presented as measurements;
+residuals and weighting are explicit (`weight_bottom`), the Jacobian SVD,
+condition number (1300.8), correlation matrix, boundary hits (2) and profile
+likelihood are reported; DATA-FIT QUALITY (RMSE 4.824 / 5.161 pp) is reported
+**separately** from PARAMETER IDENTIFIABILITY (κ, boundary hits, profile widths);
+fitted parameters are never described as measured material properties. Not yet
+done and explicitly listed as remaining work: multi-start/multi-seed diagnostics
+(V1.9-E) and the covariance/Fisher decomposition.
+
+**New synthetic known-truth check for the thermal block** (software verification
+only, no measurement): synthetic (irradiance, P_elec, Tj) data generated from a
+known truth (R_th = 0.45 K cm²/mW, ε = 0.85) are recovered to 1.3e-06 (R_th) and
+8.3e-06 (ε) without noise, and to 8.5e-04 / 3.2e-03 with 0.2 K noise; the Jacobian
+condition number is 108.6 across the irradiance range, while a **single
+irradiance** leaves R_th and ε untestable (the conduction term scales with the
+heat load, the radiative term with T⁴ — a physically meaningful identifiability
+statement that the report states rather than hides).
+
+## 30. V1.9-C negative results, blockers and acceptance
+
+**Negative results (explicit).**
+
+1. Bottom→top luminescent coupling is physically absent at these bandgaps
+   (≤ 4.7e-08 pp at the best registered corner; f_up = 3.9e-10 nominal).
+2. Luminescent coupling in *either* direction changes nothing in a top-limited
+   tandem (§24).
+3. The reduced levels L0–L2 are **not predictive** of the full model (up to
+   4.3 pp) and must not be used for optimisation claims.
+4. The 5-sun × high-R_th corners of the registered parameter box are **outside
+   the model's validity** and are INVALID — the box is wider than the physics.
+5. The V1.9-B self-heated efficiency (17.9082 %) is **superseded** for the
+   energy-balance closure (19.2633 %); the legacy value remains reproducible and
+   is kept for lineage, not as a current model result.
+6. The concentration PCE bug (§20) shows that a unit error can survive a large
+   test suite when only one operating point is exercised — the regression tests
+   added here are the direct remedy.
+
+**Blockers (unchanged, and not engineering-fixable):** no full-stack R/T/A, no
+external Rs/Rsh, no serial-level device linkage, manuscript PDF absent (35/37
+historical claims unverifiable). The gate stays CLOSED; APMT remains
+BLOCKED_BY_BASELINE_VALIDATION. Nothing in V1.9-C changes the gate definition or
+any threshold.
+
+**Acceptance checklist (item 26):**
+
+| Criterion | Status | Evidence |
+| --- | --- | --- |
+| deep engine audit recorded | DONE | §18 |
+| invariant engine first-class | DONE | §19, 23 checks in one registry |
+| HARD failures block (INVALID) | DONE | §19 + guard tests |
+| units audited, conversions explicit | DONE | §20 (+ a bug found and fixed) |
+| reference solver preserved | DONE | §22 `solve_tandem_reference` |
+| optimised solver ≥10× | DONE | §21: 718× single, 1206× batch (final code) |
+| agreement quantified | DONE | §22 (1e-11 … 1e-05) |
+| thermal audited, balance enforced, 454 K investigated | DONE | §23 (verdict: missing radiative path) |
+| bottom→top coupling implemented or shown unjustified | DONE | §24 (implemented; physically absent, quantified) |
+| Levels 0–5 | DONE | §25 |
+| cross-level divergence analysis | DONE | §25 (LOW/MODERATE/MODEL-FORM-CRITICAL) |
+| inert screening expanded to all levels | DONE | §26 (2 defects found and fixed) |
+| physical-limit tests | DONE | §27 |
+| convergence tests | DONE | §27 (+ discretisation floor) |
+| calibration hardened | PARTIAL (carried V1.9-B + guard; multi-start deferred to V1.9-E) | §29 |
+| synthetic tests expanded | DONE (thermal known-truth recovery) | §29 |
+| ablation expanded | DONE | §24 |
+| batch API / V1.9-D interface | DONE | §28 |
+| reproducibility metadata + deterministic artifacts | DONE | §28 |
+| test side-effect audit | DONE | §28 (non-mutating suite, verified by `ci_checks` git-clean) |
+| full regression suite passes | DONE | 142 passed / 1 skip, 81 s |
+| item 28 mechanism ledger | DONE | §23, §24, §26 |
+
+## 31. V1.9-C commit map and verification
+
+V1.9-C commits (all on `arena/01a102e7-solar`, all pushed):
+
+| Commit | Contents |
+| --- | --- |
+| `V1.9-C2` = `53dfa41` | invariant layer + guard + tests (`apmt/validation/{invariants,guard}.py`, `tests/test_v19_invariants.py`) |
+| `V1.9-C3` = `53f555c` | vectorised solver + preserved reference oracle + batch API (`apmt/device/{tandem,subcell,batch}.py`, `apmt/core/constants.py`, `tests/test_v19_engine.py`) |
+| `V1.9-C4` = `659691c` | thermal energy-balance rebuild + validity envelope + 454 K investigation (`apmt/device/thermal.py`, `tests/test_v19_thermal.py`, `tools/v19_thermal_investigation.py`, `data/v19_thermal_investigation.json`) |
+| `V1.9-C5` = `de4bd26` | bottom->top coupling, rear-reflection optics, Levels 0-5, concentration unit fix (`apmt/multifidelity/levels.py`, `apmt/optics/*`, `apmt/materials/silicon.py`, `apmt/params/registry.py`, tests) |
+| `V1.9-C6` = `a5aee30` | engine campaign + physics digest (`tools/v19_engine_campaign.py`, `apmt/repro/digest.py`, `data/v19_engine_campaign.json`, `tests/test_v19_batch_surrogate.py`) |
+| `V1.9-C7` = `(this commit)` | pins, CI digest verification, README twin row, master report PART V1.9-C |
+| `V1.9-C8` = `(next commit)` | report commit-hash record + regenerated `reports/.report_sha256` |
+
+*(Full hashes are listed in the table; `V1.9-C8` is the self-referencing record
+commit, so its own hash can only appear in `git log` and in the cycle's final
+chat block. The V1.9-A/V1.9-B/V1.9-C1 commits below `V1.9-C2` are untouched.)*
+
+**Verification performed at the end of the cycle:** full suite `142 passed, 1
+skipped` (the skip is the explicit "manuscript PDF absent" M2 re-render check);
+`tools/ci_checks.py` — pins, determinism, provenance, gate, artifact consistency
+and git-clean; report sha256 regenerated in `reports/.report_sha256`; working tree
+clean; remote branch checked with `git ls-remote`.
+
+**V1.9-D readiness.** Ready, with the interfaces in place:
+`batch_evaluate`/`dataset` (N→N, guarded, surrogate-ready), level selection with
+divergence classes, and a documented agreement/discretisation floor so that no
+search can mistake grid noise for physics. Required before trust: use **L4/L5
+only**, never optimise a level below L4, treat any objective value from an
+INVALID solve as absent (not as a penalty), and carry the campaign id, seed,
+level and parameter point with every candidate.

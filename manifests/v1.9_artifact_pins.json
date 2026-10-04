@@ -1,34 +1,51 @@
 {
-  "files": {
-    "data/eqe4e_curves.npz": {
-      "bytes": 25296,
-      "sha256": "539321177a9f58a2fee6f55b8d1fbfa5fcf83e2ab06e474b10f799a11de38b7a"
-    },
-    "data/eqe4e_results.json": {
-      "bytes": 3752,
-      "sha256": "8bd528428b21ce50457a7b7145470486cfecdd211fdefdc33ad3cf8cc7634064"
-    },
-    "data/s32_curves.npz": {
-      "bytes": 50102,
-      "sha256": "79900308e8c72a3a9dee4aa53ae4387689ffb9b6dfd0797e44c37079e1171266"
-    },
-    "data/s32_results.json": {
-      "bytes": 2532,
-      "sha256": "0653972bf62f13c38b3c705e682e525d1c2c82cce2b77db8dba61d95971d1667"
-    },
-    "data/v19_calibration.json": {
-      "bytes": 7168,
-      "sha256": "6da5a9e3c275e9a4bd0e11679e32168bd37f5cd6eb4e95a834eb7e805ae8b392"
-    },
-    "data/v19_mechanism_campaign.json": {
-      "bytes": 14127,
-      "sha256": "4973baec87573f2363bd9916478288871e31259eab535bea589d701e0b89910d"
-    },
-    "data/v19_oat_sensitivity.json": {
-      "bytes": 40552,
-      "sha256": "8bc3bdb5ac5321c88695daed8b5168fb65ce6456ceb732b720ead6d09600ab19"
-    }
+ "digests": {
+  "data/v19_engine_campaign.json": {
+   "excluded": [
+    "block:benchmark",
+    "block:metadata",
+    "block:physics_digest",
+    "any key matching wall_clock|runtime|elapsed|solves_per_second|seconds|duration|timestamp"
+   ],
+   "kind": "physics_digest",
+   "note": "file is not byte-reproducible (wall clocks + git commit); the digest covers the science. Verified by tools/ci_checks.py and tests/test_v19_batch_surrogate.py, which use the shared rule in apmt/repro/digest.py.",
+   "sha256": "278636bce59415d6e17f905f4d50c8801a08f02733ac627f583c0248201bc108"
+  }
+ },
+ "files": {
+  "data/eqe4e_curves.npz": {
+   "bytes": 25296,
+   "sha256": "539321177a9f58a2fee6f55b8d1fbfa5fcf83e2ab06e474b10f799a11de38b7a"
   },
-  "generated_by": "tools/v19_calibrate_twin.py",
-  "note": "sha256 pins of committed artifacts; CI verifies these"
+  "data/eqe4e_results.json": {
+   "bytes": 3752,
+   "sha256": "8bd528428b21ce50457a7b7145470486cfecdd211fdefdc33ad3cf8cc7634064"
+  },
+  "data/s32_curves.npz": {
+   "bytes": 50102,
+   "sha256": "79900308e8c72a3a9dee4aa53ae4387689ffb9b6dfd0797e44c37079e1171266"
+  },
+  "data/s32_results.json": {
+   "bytes": 2532,
+   "sha256": "0653972bf62f13c38b3c705e682e525d1c2c82cce2b77db8dba61d95971d1667"
+  },
+  "data/v19_calibration.json": {
+   "bytes": 7168,
+   "sha256": "6da5a9e3c275e9a4bd0e11679e32168bd37f5cd6eb4e95a834eb7e805ae8b392"
+  },
+  "data/v19_mechanism_campaign.json": {
+   "bytes": 14127,
+   "sha256": "4973baec87573f2363bd9916478288871e31259eab535bea589d701e0b89910d"
+  },
+  "data/v19_oat_sensitivity.json": {
+   "bytes": 40552,
+   "sha256": "8bc3bdb5ac5321c88695daed8b5168fb65ce6456ceb732b720ead6d09600ab19"
+  },
+  "data/v19_thermal_investigation.json": {
+   "bytes": 21073,
+   "sha256": "043a9bea42ee6faa7c3e06af1cdbeec9495c096f63e182633ed93fd93d6a123b"
+  }
+ },
+ "generated_by": "tools/v19_calibrate_twin.py",
+ "note": "sha256 pins of byte-reproducible committed artifacts (CI verifies these) plus physics digests for artifacts that carry machine-specific timings"
 }

@@ -4,7 +4,9 @@
 Five checks, each of which must pass in a clean checkout:
 
 1. pins      -- committed artifact hashes and byte-sizes are unchanged
-                (guards against silent number edits);
+                (guards against silent number edits), and physics digests of
+                artifacts that are not byte-reproducible (wall clocks) are
+                recomputed from the committed file;
 2. determinism -- a non-mutating re-run of the Fig. S32 digitizer reproduces
                 every raster/coordinate-based result in the stored JSON;
 3. provenance -- the machine-checkable provenance audit runs and the historical
@@ -57,7 +59,19 @@ def check_pins():
         if actual != meta["sha256"]:
             bad.append(rel)
     assert not bad, f"artifact hashes changed: {bad}"
-    return f"{len(pins.get('files', {}))} artifact hashes match"
+    # physics digests: recompute from the committed file (covers artifacts whose
+    # bytes legitimately differ between machines because they carry wall clocks)
+    ndig = 0
+    for rel, meta in pins.get("digests", {}).items():
+        path = os.path.join(HERE, rel)
+        art = json.load(open(path))
+        from apmt.repro.digest import physics_digest
+        digest = physics_digest(art)
+        assert digest == meta["sha256"], f"physics digest changed: {rel}"
+        assert digest == art["physics_digest"]["sha256"], f"{rel} digest inconsistent"
+        ndig += 1
+    return (f"{len(pins.get('files', {}))} artifact hashes match, "
+            f"{ndig} physics digest verified")
 
 
 def check_determinism():
