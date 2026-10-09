@@ -10,3 +10,9 @@ dist/
 
 # V1.9 additions
 *.nbi
+
+# V1.9-E campaign outputs are large/run-specific; promote the compact report and
+# selected immutable data artifact explicitly when a reviewed campaign completes.
+data/v19e_surrogate_dataset_*.json.gz
+data/v19e_surrogate_results_*.json
+data/v19e_surrogate_models_*.joblib

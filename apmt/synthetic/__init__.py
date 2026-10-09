@@ -1,1 +1,5 @@
-"""APMT V1.9 — synthetic layer."""
+"""APMT synthetic method checks; outputs are never physical/device evidence."""
+
+from .surrogate_benchmarks import run_surrogate_synthetic_benchmarks
+
+__all__ = ["run_surrogate_synthetic_benchmarks"]
