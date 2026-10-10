@@ -144,6 +144,25 @@ def test_fingerprints_change_with_physics_labels_but_ignore_runtime():
     assert a["input_fingerprint"] != c["input_fingerprint"]
 
 
+def test_dataset_fingerprint_survives_json_mapping_key_reordering():
+    rows = []
+    for name, irradiance, temperature in (
+        ("nominal_1sun_25c", 1.0, 298.15),
+        ("concentrated_3sun_25c", 3.0, 298.15),
+        ("hot_ambient_1sun_65c", 1.0, 338.15),
+    ):
+        row = _data_row(role="TRAIN", regime=name, campaign=f"{name}-campaign")
+        row["operating_regime"] = {
+            "name": name, "irradiance_suns": irradiance, "temperature_k": temperature,
+        }
+        rows.append(row)
+
+    # The dataset is emitted with sort_keys=True; a digest must not depend on
+    # the insertion order of operating-regime dictionaries before serialization.
+    round_tripped = json.loads(json.dumps(rows, sort_keys=True))
+    assert dataset_fingerprint(rows) == dataset_fingerprint(round_tripped)
+
+
 def test_atomic_dataset_storage_separates_valid_rows_from_rejection_ledger(tmp_path):
     historical = hashlib.sha256(D_ARTIFACT.read_bytes()).hexdigest()
     good = _data_row(role="TRAIN")

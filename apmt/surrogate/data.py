@@ -317,8 +317,21 @@ def dataset_fingerprint(samples: Sequence[dict], *, roles: Iterable[str] | None 
             "hard_invariants", "hard_invariant_failures", "campaign_id", "design_family",
             "paired_design_id", "random_seed", "role", "status",
             "status_before_deduplication", "status_reason", "duplicate_of", "outputs", "error")})
-    rows.sort(key=lambda r: (str(r.get("operating_regime")), str(r.get("model_level")),
-                             str(r.get("role")), str(r.get("input_fingerprint"))))
+    def _row_order(row: Mapping[str, Any]) -> tuple[str, str, str, str, str]:
+        regime = row.get("operating_regime")
+        if isinstance(regime, Mapping):
+            # A regime's name is its stable primary identity.  Never sort by
+            # ``str(dict)``: JSON serialization may reorder mapping keys, which
+            # changes row order and therefore the fingerprint after a round-trip.
+            regime_name = str(regime.get("name", ""))
+            regime_canonical = _canonical(regime).decode("utf-8")
+        else:
+            regime_name = ""
+            regime_canonical = _canonical(regime).decode("utf-8")
+        return (regime_name, regime_canonical, str(row.get("model_level")),
+                str(row.get("role")), str(row.get("input_fingerprint")))
+
+    rows.sort(key=_row_order)
     return _sha({"contract_version": DATA_CONTRACT_VERSION, "records": rows})
 
 
