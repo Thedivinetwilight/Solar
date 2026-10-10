@@ -12,8 +12,9 @@ import json
 import os
 import tempfile
 from collections import Counter
+from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any
 
 import numpy as np
 
@@ -254,8 +255,8 @@ def mark_duplicates(samples: Sequence[dict], *, tolerance: float = 1e-10) -> lis
                     continue
                 s = spec(name)
                 span = max(float(s.high) - float(s.low), abs(float(s.default)), 1.0)
-                quantized.append((name, int(round((float(value) - float(s.low)) / span / tolerance))))
-        except Exception:
+                quantized.append((name, round((float(value) - float(s.low)) / span / tolerance)))
+        except Exception:  # noqa: BLE001 - preserve the raw-key fallback on any registry error
             quantized = sorted((str(k), str(v)) for k, v in params.items())
         base_key = _sha({"parameter_vector": quantized,
                          "operating_regime": row.get("operating_regime"),
@@ -388,9 +389,9 @@ def save_dataset(path: str | os.PathLike[str], samples: Sequence[dict], *,
     fd, tmp_name = tempfile.mkstemp(prefix=target.name + ".", suffix=".tmp", dir=target.parent)
     os.close(fd)
     try:
-        with open(tmp_name, "wb") as raw_file:
-            with gzip.GzipFile(fileobj=raw_file, mode="wb", mtime=0, compresslevel=6) as gz:
-                gz.write(raw)
+        with open(tmp_name, "wb") as raw_file, gzip.GzipFile(
+                fileobj=raw_file, mode="wb", mtime=0, compresslevel=6) as gz:
+            gz.write(raw)
         os.replace(tmp_name, target)
     finally:
         if os.path.exists(tmp_name):

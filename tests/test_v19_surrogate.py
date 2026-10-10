@@ -10,25 +10,51 @@ import pytest
 
 from apmt.params.registry import ParamSet, vector_names
 from apmt.surrogate.adaptive import localize_high_errors, propose_near_errors
+from apmt.surrogate.campaign import (
+    _assert_json_finite,
+    _grouped_cv,
+    _profile_l5_tolerance,
+    _single_model_set,
+)
 from apmt.surrogate.data import (
-    DATA_CONTRACT_VERSION, DUPLICATE_OR_DEPENDENT, INCOMPLETE_OUTPUT,
-    INVALID_PHYSICS, OUTSIDE_VERIFIED_DOMAIN, VALID_FOR_SURROGATE,
-    dataset_fingerprint, load_dataset, make_sample_record, mark_duplicates,
-    save_dataset, training_rows,
+    DATA_CONTRACT_VERSION,
+    DUPLICATE_OR_DEPENDENT,
+    INCOMPLETE_OUTPUT,
+    INVALID_PHYSICS,
+    OUTSIDE_VERIFIED_DOMAIN,
+    VALID_FOR_SURROGATE,
+    dataset_fingerprint,
+    load_dataset,
+    make_sample_record,
+    mark_duplicates,
+    save_dataset,
+    training_rows,
 )
 from apmt.surrogate.domain import (
-    IN_DOMAIN_UNCERTAIN, IN_DOMAIN_VALIDATED, INVALID_INPUT, MODEL_UNAVAILABLE,
-    OUT_OF_DOMAIN, SupportProfile, detection_metrics, fit_support_profile,
+    IN_DOMAIN_UNCERTAIN,
+    IN_DOMAIN_VALIDATED,
+    INVALID_INPUT,
+    MODEL_UNAVAILABLE,
+    OUT_OF_DOMAIN,
+    SupportProfile,
+    detection_metrics,
+    fit_support_profile,
 )
 from apmt.surrogate.engine import SurrogateBundle, load_bundle, save_bundle
-from apmt.surrogate.campaign import (_assert_json_finite, _grouped_cv,
-                                     _profile_l5_tolerance, _single_model_set)
 from apmt.surrogate.models import (
-    MODEL_FAMILIES, compare_families, conformal_radius, fit_regressor,
-    grouped_kfold_indices, interval_metrics, regression_metrics, select_family,
+    MODEL_FAMILIES,
+    compare_families,
+    conformal_radius,
+    fit_regressor,
+    grouped_kfold_indices,
+    interval_metrics,
+    regression_metrics,
+    select_family,
 )
 from apmt.synthetic.surrogate_benchmarks import (
-    quadratic_interaction_surface, run_surrogate_synthetic_benchmarks, unit_lhs,
+    quadratic_interaction_surface,
+    run_surrogate_synthetic_benchmarks,
+    unit_lhs,
 )
 from apmt.validation.guard import SolveRecord
 from apmt.validation.invariants import InvariantBundle, InvariantGroup, Severity, record
