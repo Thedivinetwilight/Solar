@@ -2385,3 +2385,397 @@ detector; 58–72% abstention is the only safety. (3) Hot-regime conformal
 under-coverage (0.76 at nominal 0.90). (4) Sharp-peak smoothing causes
 100–500 nm argmax misses on slice optima. (5) Single-point latency still
 0.24× L4 (batch path only helps throughput workloads).
+
+---
+
+# PART V1.9-G — REDUCED-DIMENSIONAL DISCOVERY, OOD STUDY, INTERACTION SALTELLI AND SELECTION
+
+**Status: `PRE_GATE_COMPUTATIONAL_DISCOVERY_STUDY`.** Everything in this part
+is model-observed computational evidence. No experiment was run, no gate was
+opened, and no headline PCE claim is made. APMT remains
+**`BLOCKED_BY_BASELINE_VALIDATION`**. All V1.9-E and V1.9-F numbers above are
+preserved; this part only adds verification, a predeclared discovery campaign,
+and honest pass/fail verdicts against predeclared criteria.
+
+**Date:** 2026-10-10 · **Repository:** github.com/Thedivinetwilight/Solar ·
+**Branch:** `arena/a6cb5ca0-solar` (verified identical to the reported
+V1.9-F branch; local HEAD = remote HEAD = `95ec5cd` at campaign start).
+
+## 42. V1.9-G — reduced-dimensional discovery outcome
+
+### 42.1 Verified repository state and V1.9-F baseline reconciliation
+
+Identity gate: remote URL `github.com/Thedivinetwilight/Solar` CONFIRMED;
+branch `arena/a6cb5ca0-solar`; HEAD `95ec5cdc53617ee84b3294e04a23fd5341326f48`
+matches the reported final commit; commit sequence `bd6cb8a → f1311fd →
+95ec5cd` verified; working tree clean; environment identical to V1.9-F
+(Python 3.11.2, NumPy 2.4.6, SciPy 1.17.1, scikit-learn 1.9.1). The full
+V1.9-E campaign was NOT rerun (no documented reason); the V1.9-E reference
+was reproduced by exact refit (§42.5).
+
+Every reported V1.9-F claim was re-checked against committed artifacts
+before use as baseline: file hashes/sizes (4/4 match), dataset fingerprints
+(`c3605d06…` via valid+ledger, `9855e0a7…` via valid_records — duplicates
+live in both lists, so concatenation double-counts), physics digest
+`df691e7b…` and registry digest `3e8b92be…` reproduced from the working
+tree, selections (ET/HGB/HGB, 0.6789/0.7542/0.7850), the full 7-way
+validation table, the nominal ET−HGB bootstrap (+0.0003, CI [−0.20,+0.17],
+P=0.55), corner recalls (0.181/0.194/0.361), calibration coverages, tests
+**205 passed / 1 skipped / 5 warnings**, and `ci_checks.py` **6/6** — ALL
+CONFIRMED. Two transcription errata in §41 were found and are corrected
+here (history preserved): (1) §41.15 "beats random 8/9 times" should read
+7/9 with 2 ties and 0 losses per the §41.8 table and JSON (verified:
+7 strict, 2 ties, 0 losses); (2) §41.9 "432 new L4/L5 solves" should read
+432 new L4 solves (0 new L5, as §41.12 correctly states).
+
+### 42.2 Parameter audit (Phase 3A)
+
+All 14 surrogate axes were audited against four evidence streams: V1.9-D
+Sobol total-order (max over regimes, L4, N=96×2), V1.9 OAT at the nominal
+baseline (committed), the new first-hand full-box 1-D audit probe (9-pt
+linear grids × 14 axes × 3 regimes plus 9-pt log grids on rsh/srh/srv;
+459 L4 solves, 0 invalid), and L4 code-path inspection. Training coverage
+is 100% of every verified-box range (1,338 TRAIN/ADAPTIVE_TRAIN rows).
+
+| Axis (units, verified box) | Directly modeled in L4 | ST max / OAT / audit range | Verdict |
+| --- | --- | --- | --- |
+| perovskite_eg_ev (eV, 1.4–2.0) | absorption edge, J0, current match | 0.590 / 2.53 / **7.40 pp** | ACTIVE (all triggers + confirmed pair) |
+| perovskite_thickness_nm (nm, 150–1500) | absorption, J0 slab | 0.532 / 5.12 / **11.21 pp** | ACTIVE (all triggers + confirmed pair) |
+| perovskite_urbach_mev (meV, 5–60) | absorption tail | 0.022 / — / **1.55 pp** | ACTIVE (audit trigger) |
+| perovskite_srh_lifetime_ns (ns, 10–20000) | J0 slab (propagates ≈0) | 0.000 / 0.00 / 0.02 pp | FIXED at 1000 (inert in-box) |
+| silicon_eg_ev (eV, 1.1–1.16) | bottom edge, Varshni Voc | 0.004 / — / **0.91 pp** | ACTIVE (audit trigger) |
+| silicon_thickness_um (µm, 60–400) | bottom absorption | 0.004 / 0.15 / 0.48 pp | FIXED at 260 (knife-edge: 0.48 vs 0.50 rule) |
+| silicon_srv_cm_s (cm/s, 0.1–1000) | bottom J0 surface term | 0.006 / — / **0.62 pp** | ACTIVE log10 (audit trigger, high-end effect) |
+| silicon_light_trapping (×, 1–30) | bottom path length | 0.013 / 0.10 / 0.20 pp | FIXED at 1.0 (= low bound default) |
+| rear_reflectance (—, 0–0.98) | rear mirror | 0.000 / — / 0.06 pp | FIXED at 0.0 (default) |
+| arc_thickness_nm (nm, 0–220) | thin-film front optics | 0.039 / 1.96 / **3.58 pp** | ACTIVE (OAT + audit; fringe structure) |
+| parasitic_layer_thickness_nm (nm, 0–60) | front parasitic absorption | 0.018 / 0.08 / 0.47 pp | FIXED at 15 (knife-edge: 0.47 vs 0.50 rule) |
+| rs_ohm_cm2 (Ω·cm², 0–20) | series loss | 0.591 / 0.33 / **11.95 pp** | ACTIVE (ST + audit) |
+| rsh_ohm_cm2 (Ω·cm², 50–1e6) | shunt loss | 0.000 / 0.48 / **16.74 pp** | ACTIVE log10 (saturation check FAILED: 0.82 pp above 1000) |
+| thermal_resistance (K·cm²/W, 0.159–0.778) | self-heating loop | 0.184 / 2.39 / **4.85 pp** | ACTIVE (all triggers) |
+
+Classification: (A) strong — Eg, thickness, rs, arc, Rth; (B) weak-but-real
+— urbach, si_eg, si_srv; (C) confirmed interaction — Eg×thickness (V1.9-D
++0.234 > 0.128 floor, nominal); (D) narrow/nonlinear — arc fringes, rsh
+shunt recovery, Rth thermal edge; (E) insufficient-evidence notes —
+si_thickness/parasitic sit 0.02–0.03 pp below the audit trigger (rule
+sensitivity documented, threshold NOT re-tuned). No axis is declared
+universally unimportant: fixed axes are fixed to stated values with stated
+scope, not dropped as meaningless.
+
+### 42.3 Operating slice and comparison design (Phases 3B–3C)
+
+The predeclared rule (ST > 0.03 OR OAT > 0.5 OR audit > 0.5 OR confirmed
+pair; rsh fixed unless > 0.5 pp above 1000 Ω·cm²) selected **9 active**
+axes and 5 fixed. Models compared with equivalent data access on the slice:
+
+1. **Reduced slice model** — 9-D (Eg, thickness, urbach, si_eg, log10 si_srv,
+   arc, rs, log10 rsh, Rth), 7-family selection on slice validation.
+2. **Full-dimensional reference** — the exact V1.9-E refit (ET/HGB/HGB on
+   448/443/447 training rows), evaluated on identical slice test points.
+3. **Simple baselines** — `constant` (slice mean) and `ridge` inside the 7-way.
+
+Fixed values (registered defaults, all asserted inside the verified box):
+srh 1000 ns, si_thickness 260 µm, light_trapping 1.0, rear_reflectance 0.0,
+parasitic 15 nm. The slice supports ONLY this configuration: shunted
+designs (rsh ≲ 1000), textured rears, non-default parasitics/Si thickness,
+and SRH-engineered absorbers are OUT OF SLICE SCOPE by construction. Slice
+training (448/region) matches the V1.9-E nominal training count
+(amendment G-A2, before any slice physics); log10 scales for rsh/si_srv are
+fixed box transforms (amendment G-A1, before any slice physics); the peak
+budget cap was corrected 300 → 600 (amendment G-A3: the original cap was
+arithmetically inconsistent with the predeclared scan design; recorded
+after a loud assertion, before any peak was examined). All three
+amendments are embedded in the results artifact with rationale and
+no-peeking justification.
+
+### 42.4 Spatially blocked evaluation protocol (Phase 4)
+
+Coordinates: verified-box-normalized, with log10 applied on the two
+log axes (limitation stated: equal weight per scaled unit; log axes
+compress decades by design). Distance: Euclidean. Buffer rule (unchanged
+from V1.9-F for comparability): median leave-one-out NN distance of the
+TRAINING design — 0.493/0.498/0.498 on the 9-D slice vs 0.77–0.79 in
+V1.9-F 14-D, i.e. the curse visibly relaxes. Categories reported with
+counts: interpolation / separated / boundary (margin < 0.05) / Eg slabs /
+withheld slice corners / interaction box / peak neighborhoods /
+unsupported+invalid / operating slice. Training, selection, calibration,
+and final evaluation use disjoint role sets (guarded by assertion).
+
+### 42.5 Slice accuracy: the corrected GP wins, the full reference collapses (Phase 3C)
+
+Slice training/validation/calibration/final per regime:
+448/64/64/96 (conc, 0 invalid), 446/63/63/93 (hot, 7 invalid),
+443/61/60/95 (nom, 13 invalid). **The box-normalized GP is selected in all
+three regimes** (validation 0.652/0.466/0.610 vs HGB 0.954/0.982/1.285 and
+ET 1.379/1.132/1.716) — with dense slice data and correct scaling, the GP
+is the best family, reversing the 14-D verdict. The raw-units GP again
+ties `constant` bit-for-bit (4.164/4.073/4.915), reproducing the V1.9-F
+degeneracy finding on new data.
+
+PCE accuracy on slice FINAL (pp RMSE), reduced (GP) vs full reference vs
+constant:
+
+| Regime | Reduced | Full ref | Constant | Reduced MAE / bias | G_SLICE_ERR ≤ 0.50 |
+| --- | ---: | ---: | ---: | ---: | --- |
+| conc | 0.513 | 1.699 | 3.594 | 0.373 / −0.021 | MISS (2.5% over) |
+| hot | 0.514 | 2.970 | 3.766 | 0.364 / +0.064 | MISS (2.8% over) |
+| nom | 0.605 | 4.075 | 4.981 | 0.451 / +0.119 | MISS |
+
+**G_SLICE_BEATS_FULL: PASS in all regimes** — paired bootstrap
+(full−reduced) dRMSE +1.19/+2.46/+3.47, CIs [+0.84,+1.57]/[+1.83,+3.08]/
+[+2.60,+4.24], P = 1.000. **G_SLICE_ERR: FAIL in all regimes**, narrowly
+(0.51/0.51/0.61). No winner's curse: the GP also leads the post-hoc final
+ranking (HGB second at 0.87–1.10). Error structure: boundary strata worse
+(0.56–0.72) than interpolation (0.33–0.55); hot separated (0.66) is 2× its
+interpolation (0.33) — on the slice, distance predicts error, unlike 14-D.
+Worst cases 1.97–2.26 pp (q90 0.76–0.98).
+
+Why the full reference fails on the slice was isolated mechanistically:
+its error concentrates in the LOW-rsh tertile (RMSE 2.36/4.61/6.65, max
+errors 8–13 pp), while on rsh > 1000 it recovers to 1.24/1.68/1.61 —
+near its native 14-D error. The slice's log-uniform rsh sampling probes
+the shunt regime the linear-trained reference never saw; the pinned-5
+corner costs only ~0.2–0.6 pp. The reduced model wins by matching the
+operating distribution AND by lower dimension — both mechanisms are
+real and reported. The G_SLICE_ERR miss is likewise boundary-driven: the
+reduced model's own low-rsh-tertile RMSE (0.64–0.79) vs mid/high
+(0.36–0.52) shows the shunt-recovery edge dominates the residual.
+
+### 42.6 OOD detector study: a valuable negative (Phase 5)
+
+Ensemble: knn distance (k=5) + local sparsity (k=10/radius) + model
+disagreement (selected+2 alts), thresholds at the 90th dev percentile
+(val rows only), OOD iff ≥2 fire. Physical-invalid and outside-box
+overrides retained; the L4 guard remains binding and separate.
+
+| Regime | New-corner recall (pooled, n=48) | In-box FPR (n≈95) | G_OOD_RECALL ≥ 0.50 | G_OOD_FPR ≤ 0.10 |
+| --- | ---: | ---: | ---: | ---: |
+| conc | 0.375, CI [0.25,0.52] | 0.104, CI [0.06,0.18] | FAIL | FAIL (marginal) |
+| hot | 0.312, CI [0.20,0.45] | 0.129, CI [0.08,0.21] | FAIL | FAIL |
+| nom | 0.250, CI [0.15,0.39] | 0.063, CI [0.03,0.13] | FAIL | PASS |
+
+Both criteria FAIL (FPR CIs cover 0.10 in conc/hot, but point estimates
+miss). Indicator autopsy: corner vs in-box MEDIANS are nearly identical
+(knn 0.61–0.65 vs 0.56–0.58; sparsity 1.37–1.42 vs 1.24–1.27;
+disagreement overlapping) — detections come from tails only. The 14-D
+ensemble on frozen V1.9-F corners recalls 0.40/0.49/0.31 (vs frozen
+single-distance 0.18/0.19/0.36) but its dev-fitted thresholds do NOT
+transfer (hot test FPR 0.25 vs dev 0.10). New 14-D combos recall
+0.29–0.62. Bluntly: geometry cannot separate withheld corners from
+scattered training data in 9–14-D at this density, and the ensemble
+abstains LESS (5–29%) than V1.9-F's detector (58–72%) while detecting no
+better — as a safety device it is weaker, and V1.9-F's conservative
+abstention remains the only working guardrail. The L4 guard rejected
+34/34 invalid rows (11 committed + 23 new). OOD detection stays a major
+open defect; no deployment may rely on these votes.
+
+### 42.7 Fresh Saltelli central box (Phase 6)
+
+Predeclared: 4 axes (Eg, thickness, rs, arc), normalized [0.15,0.85]^4 =
+physical Eg [1.49,1.91], thickness [352.5,1297.5], rs [3,17], arc
+[33,187], others at defaults (exactly the V1.9-F hypothesis box);
+N=256, second order, 3 regimes, 7,680 fresh L4 solves, 0 invalid
+(complete designs). Bootstrap CIs (200) + even/odd split-half stability.
+
+Total-order (central box): conc rs 0.69 ± 0.11 / Eg 0.34 ± 0.06 /
+thickness 0.06 / arc 0.02; hot Eg 0.88 ± 0.17 / thickness 0.26 / rs 0.14 /
+arc 0.07; nom Eg 0.69 ± 0.15 / thickness 0.25 / rs 0.12 / arc 0.10.
+Rank order matches V1.9-D full-box in conc/nom (hot is FIRST interaction
+evidence for that regime). **G_SALTELLI_STABLE: 1/3** — ranks agree
+across halves everywhere, but |ΔST| fails hot (0.18) and marginally nom
+(0.10 vs 0.10): total magnitudes for the dominant axis are unstable, and
+bootstrap CIs agree. **Second-order pairs are INCONCLUSIVE**: estimates
+flip sign between halves (e.g. nom thickness×rs +1.57 even vs −1.01 odd)
+with absurd magnitudes — N=256 with pseudo-random (non-quasi) base
+samples is inadequate for pairs under a dominant axis (first-order sums
+reach 1.46 in hot). The V1.9-D N=768 full-box Eg×thickness pair (+0.234
+nominal) stands as the only converged pair evidence. Scope Expand:
+central-box shares differ from full-box (nom thickness 0.25 vs 0.53) —
+indices do not transfer across scopes. INTERACTION_SUBSET_SALTELLI is now
+RUN with the above limitations (pairs NOT_RUN at converged N).
+
+### 42.8 Narrow peaks: fringes are broad, two maxima resolved (Phase 7)
+
+Predeclared anchors (center/high-Eg/low-Eg) × 41-pt arc scans + 21-pt Eg
+control + prominence (> 0.05 pp over ±2 neighbors) + ≤5 refinements × 9
+pts; 450 solves (≤ 600 cap). Arc response at 5.5 nm sampling is smooth
+broad oscillation (ranges 0.37–3.13 pp) with NO narrow-peak pathology:
+only 2 qualifying peaks (hot/nom high-Eg anchor, both at 77 nm), each
+re-confirmed best on a 9-pt ±11 nm refinement grid (2.75 nm resolution;
+shift 0.0 nm, Δ0.00 pp — RESOLVED, trivially by determinism at the shared
+center point, honestly noted). Surrogate RMSE on scans 0.18–0.56 (smooth
+1-D structure is easy). Eg control: 7.5–11.1 pp ranges; interior maximum
+nom @1.73 eV; near-boundary maximum conc @1.91 eV; hot monotonic. No
+global-optimality claim: these are scanned candidates and locally
+resolved maxima only. Missed-peak risk below 5.5 nm scale remains
+unprobed (recorded limitation).
+
+### 42.9 Candidate selection: ranking recovers on the slice (Phase 8)
+
+Six methods (A random, B max-pred, C disagreement-UCB β=1.0, D diverse
+top-quartile, E central-box max-pred, F local refinement σ=0.02),
+pool 200, k=6, 3 seeds, 3 regimes — 324 L4 verifications, all proposals
+verified, none promoted from prediction. Median best-verified PCE:
+
+| Regime | A random | B max | C UCB | D diverse | E box | F local |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| conc | 20.37/18.89/22.45 | 20.37/20.03/22.45 | 20.37/20.03/22.45 | 20.37/18.89/22.45 | 19.35/17.28/18.63 | 21.37/17.44/22.45 |
+| hot | 16.94/15.13/15.38 | 19.02/18.33/19.18 | 19.02/18.33/19.18 | 19.02/18.33/19.18 | 18.30/16.67/17.49 | 19.37/18.97/19.33 |
+| nom | 18.87/20.93/19.29 | 22.27/21.36/22.25 | 22.27/21.36/22.25 | 22.27/20.66/22.25 | 21.02/20.84/19.78 | 22.37/21.05/22.43 |
+
+**G_SELECT_REPLICATION: PASS 9/9** — median-guided best ≥ random best in
+every regime-seed, 0 losses, under the literal predeclared median
+definition. Strict per-method accounting is less rosy: E (support-
+constrained) never finds the best (by design — its picks are 48/54
+VALIDATED votes vs B's 41/54 with 6 OOD flags: the support/performance
+tradeoff quantified); F wins outright 4/9 but collapses once (conc seed
+2: 17.44 — argmax fragility, the model's best point verified poorly).
+B/C never lose (9/9 ≥ random). **Fine ranking WORKS on the slice**:
+Spearman 0.37–1.00 (mostly 0.5–0.9) vs V1.9-F's 0.03–0.94 collapse;
+top-2 recovery mostly 0.5–1.0. Region-finding AND ranking are supported
+on the slice with mandatory verification — a genuine advance over V1.9-F.
+
+### 42.10 Validity map: two invalid mechanisms isolated
+
+23 unique new invalids (all preserved with reasons): 20 slice rows with
+rsh 51–105 (logz < 0.08) failing `electrical.range` (FF/PCE collapse) —
+the log-uniform slice sampling EXPOSED a shunt-validity boundary at
+rsh ≈ 100 (nom/hot; conc unaffected) that linear sampling never reached;
+plus 3 high-rs/high-Rth combo rows failing `numerical.solve_completed`
+(the V1.9-E thermal-stress pattern). Slice invalid rate 20/2016 ≈ 1%.
+Invalid rows never train (status-aware selector) but the boundary region
+(rsh 110–1000, steep recovery) is the accuracy bottleneck for both
+models (§42.5). The valid region has a complex, mechanism-dependent shape
+(shunt floor + thermal corner); uniform-prior sensitivity understates
+low-end effects — a methodology lesson for future campaigns.
+
+### 42.11 Cost, scaling verification, and warnings (Phases 9–10)
+
+Conventions identical to V1.9-F (ratios vs median L4 = 43.0 ms, n=11,217;
+means 46.1 ms). Slice GP (PCE-only, single estimator): fit 1.8–2.1 s;
+single-point 0.24 ms = **168–180×** (the historical 10× single-point
+target is exceeded 17× on this path — scope caveat: PCE-only inference,
+not an 11-target bundle, which is NOT_BUILT; projected ~16×,
+UNMEASURED); batch-256 0.007 ms/pt = **5900–6400×** amortized; OOD
+indicators 2.6–2.8 ms/100 queries. Full bundle path 180.9 ms = 0.237×,
+reproducing V1.9-F's 0.24× exactly (convention verified). Full refit
+31.8 s; campaign 590.4 s; peak RSS 0.98 GiB. L4 verification was never
+sacrificed for timing.
+
+Scaling verification (Phase 9): the V1.9-F boxnorm correction behaves
+identically in current code (raw GP still ties constant on slice data);
+train/select/calibrate/predict/batch/serialization paths verified —
+serialization round-trip (ET + boxnorm-GP, bit-identical predictions)
+pinned by test; batch-vs-single identity pinned by V1.9-F tests;
+fold-independent fixed transforms only (box/log); support uses the same
+scaled coordinates as the slice models. Checklist recorded in results.
+
+Warnings ledger: suite **5** (unchanged) — pinned to two tests in
+`tests/test_v19_surrogate.py` (family-comparison toy fit: 3; synthetic
+benchmarks: 2), all ARD-scale→4.0 / noise→1e-10 on synthetic data;
+immaterial to production (software checks; bounds are production
+settings, fixtures arbitrary — no change, rationale recorded). V1.9-G
+slice fits: 2–4 ConvergenceWarnings per regime marking ARD pruning of
+exactly the weak axes (urbach/si_eg/si_srv/Rth → 4.0 in fitted kernels);
+verdict-robust (GP wins by 0.3–1.2 pp). Campaign stderr EMPTY. No
+warning suppressed in production code; no blind limit increases.
+
+### 42.12 Evidence artifacts and determinism (Phase 11)
+
+| Artifact | Bytes | SHA-256 / fingerprint |
+| --- | ---: | --- |
+| `data/v19g_discovery_results.json` | 171,562 | file `bd43dcef…a973f`; physics digest `db2bd80c…eae4f` (run-2; varies with `*_s` benchmark timings, which the shared exclusion pattern does not cover — same known pattern as V1.9-E/F) |
+| `data/v19g_new_rows.json.gz` | 6,849,002 | file `95551c26…2cd956` (per-row `runtime_s` varies); dataset fingerprint `654641ca…b15d0` (BIT-STABLE across 2 runs); physics digest `0c04be2d…0ab9` (BIT-STABLE across 2 runs) |
+
+11,217 rows: 11,052 VALID, 23 INVALID (preserved with reasons), 142
+DUPLICATE (1,562 output comparisons vs priors, maxdiff 0.0 —
+bit-identical; arise from overlapping selection pools across
+methods/seeds). Roles V19G_*; V1.9-E/F
+artifacts untouched. Round-trip assertion (fingerprint recomputed from
+file layout) passes inside the tool. A second full-campaign run
+reproduced the dataset fingerprint bit-identically (run-2 file SHAs
+above; science content identical).
+
+### 42.13 Success criteria verdict (Phase 12)
+
+Historical thresholds (unchanged, reported): PCE RMSE ≤ 0.25 — NOT_MET on
+slice (0.51–0.61) and reference; single-point 10× — MET on PCE-only slice
+inference (168–180×), NOT_MET on bundle path (0.237×, reproduced);
+withheld recall 0.50 — NOT_MET (0.25–0.38); in-box FPR 0.10 — 1/3
+(nominal only); conformal coverage 0.90 — slice radii 0.83–1.25 with
+post-hoc final coverage 0.927/0.914/0.958 (conc/hot/nom; marginal
+calibration holds, hot under-coverage fixed — diagnostic, not
+predeclared as a criterion).
+New predeclared criteria: G_SLICE_BEATS_FULL 3/3 PASS; G_SLICE_ERR 0/3
+(narrow miss); G_OOD_RECALL 0/3 FAIL; G_OOD_FPR 1/3; G_SELECT_REPLICATION
+9/9 PASS; G_SALTELLI_STABLE 1/3 (ranks stable, magnitudes not).
+Exploratory: pairs INCONCLUSIVE; peaks 2/2 resolved (broad fringes);
+ranking recovered (Spearman 0.37–1.0). INSUFFICIENT_DATA: none — every
+reported rate rests on n ≥ 21 and every stratum on n ≥ 8.
+
+### 42.14 Tests, files, guardrails, readiness
+
+Final verification: `pytest` **232 passed, 1 skipped, 5 warnings** (205
+pre-existing + 27 new in `tests/test_v19g_discovery.py`, all synthetic/
+deterministic, warning-clean). `ci_checks.py` **6/6**. `ruff check` clean
+on all created/modified files. `git diff --check` clean.
+
+Files added: `apmt/surrogate/discovery.py` (protocol + helpers),
+`tools/v19g_discovery_campaign.py` (8-step campaign),
+`tests/test_v19g_discovery.py` (27 tests),
+`data/v19g_discovery_results.json`, `data/v19g_new_rows.json.gz`.
+No production file modified (campaign/models/engine untouched — the G
+campaign only ADDS predeclared analysis layers).
+
+Guardrails: APMT remains `BLOCKED_BY_BASELINE_VALIDATION`; the baseline
+gate was not reopened. **0 new PCE claims promoted** (all candidate PCEs
+are L4-verified computational probes). L5: NOT_RUN (no new L5 solves; L5
+used nowhere in V1.9-G). No synthetic recovery presented as validation.
+Physics untouched (digest `df691e7b…` reproduced). No 14-D global
+optimization performed (all pools slice-restricted; no optimizer run).
+Negative results preserved above (OOD failure, pair inconclusiveness,
+criterion misses).
+
+**V1.9-G readiness verdict: C — REDUCED_DIMENSION_SUPPORTED_WITH_L4_VERIFICATION.**
+On the defined 9-D operating slice (fixed values §42.3): GP predictions
+(0.51–0.61 pp RMSE) with working fine ranking and 9/9 region-finding are
+a supported discovery prior; every candidate MUST be L4-verified;
+predictions outside the slice (other fixed values, rsh ≲ 100 shunt floor,
+withheld corners) are UNSUPPORTED — the OOD detector cannot be relied
+upon to flag them. Outcomes A (not ready) is too harsh given slice
+ranking/selection evidence; B understates ranking recovery; D
+(candidate-ranking-supported) overstates given OOD blindness and 2×
+error target. No outcome validates APMT.
+
+**Five most consequential discoveries.** (1) The corrected GP, dense slice
+data, and log scales deliver 0.51–0.61 pp with selection on validation
+confirmed on final — the 14-D GP failure was data-geometry, not method.
+(2) The full reference fails on the slice (1.7–4.1 pp) almost entirely
+via log-rsh distribution shift (low-tertile RMSE up to 6.7, max err 13
+pp) — training-distribution match dominates dimensionality. (3) OOD
+ensemble recall 0.25–0.38 with NO median indicator separation: withheld
+corners are geometrically undetectable at this density — a structural
+negative. (4) Log-uniform sampling exposed a shunt-validity boundary
+(rsh ≈ 100, electrical collapse) invisible to linear campaigns. (5) Fine
+ranking recovers on the slice (Spearman 0.37–1.0, top-2 mostly 0.5–1.0)
+vs V1.9-F's 0.03 collapse — rank quality is regime/density-dependent,
+not a fixed model property.
+
+**Five most important remaining limitations.** (1) Slice RMSE 0.51–0.61
+(2× the 0.25 target) with 2.0–2.3 pp worst cases at the shunt boundary.
+(2) No reliable OOD detector (recall ≤ 0.38; threshold transfer fails);
+abstention remains the only guardrail. (3) Saltelli pairs inconclusive at
+N=256 (sign flips); only V1.9-D's full-box pair stands; hot S1 sums > 1.
+(4) Slice scope is narrow by construction (5 pinned values; shunt floor;
+thermal corner unmapped within slice). (5) Peak probing stops at 5.5 nm
+(arc) with 2.75 nm refinement; sub-scale structure unprobed; no 11-target
+slice bundle exists (PCE-only).
+
+V1.9-H candidates (all NOT_RUN): (1) converged-N (≥768, quasi-random)
+central-box Saltelli for pairs; (2) shunt-boundary-aware slice campaign
+(rsh floor ≥ 110 or boundary-adapted design); (3) 5-D ARD-core
+hypothesis test (Eg/thickness/arc/rs/rsh) as a FRESH predeclared
+campaign; (4) non-geometric OOD signals (physics-residual or
+validity-classifier study); (5) full 11-target slice bundle with
+guardrails + bundle-path timing.
