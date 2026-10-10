@@ -8,9 +8,10 @@ assumption that produces fake results:
 * below 300 nm  : clamp to the 300 nm constants (strongly absorbing; the error
                   in R/T/A is small because k is already >> 1);
 * above 1200 nm : k from the last tabulated alpha with an exponential tail
-                  exp(-(lambda-1200)/tail_nm); the tail parameter is registered
-                  as an EXPLORATORY parameter (default tail_nm = 25) and the
-                  extrapolated region is flagged in the returned object.
+                  exp(-(lambda-1200)/tail_nm); the tail length is a DOCUMENTED
+                  SHAPE CONSTANT (SI_SUBGAP_TAIL_NM = 25 nm, not a registered
+                  parameter -- V1.9-H doc fix) and the extrapolated region is
+                  flagged in the returned object.
 
 The model also provides a Lambertian path-length enhancement factor so that
 "light trapping" is an explicit, parameterised design choice rather than a
@@ -25,6 +26,10 @@ from dataclasses import dataclass
 import numpy as np
 
 from ..core.constants import K_B_EV_K
+
+# Documented shape constant for the above-table exponential tail
+# exp(-(lambda-1200)/tail_nm). NOT a registered parameter (V1.9-H audit).
+SI_SUBGAP_TAIL_NM = 25.0
 
 _REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 _NPZ = os.path.join(_REPO, "data", "materials", "silicon_green_keevers_1995.npz")
@@ -72,7 +77,7 @@ def _log_interp(x, xp, fp):
     return np.interp(x, xp, np.log10(np.maximum(fp, 1e-12)))
 
 
-def silicon_index(wavelength_nm: np.ndarray, tail_nm: float = 25.0) -> OpticalConstants:
+def silicon_index(wavelength_nm: np.ndarray, tail_nm: float = SI_SUBGAP_TAIL_NM) -> OpticalConstants:
     """Interpolate tabulated Si n,k onto ``wavelength_nm`` (ascending or not)."""
     wl = np.asarray(wavelength_nm, dtype=float)
     twl, talpha, tn, tk = _table()
@@ -100,7 +105,7 @@ def silicon_index(wavelength_nm: np.ndarray, tail_nm: float = 25.0) -> OpticalCo
     return OpticalConstants(wl, n, k, extrap, prov)
 
 
-def silicon_alpha_cm1(wavelength_nm: np.ndarray, tail_nm: float = 25.0) -> np.ndarray:
+def silicon_alpha_cm1(wavelength_nm: np.ndarray, tail_nm: float = SI_SUBGAP_TAIL_NM) -> np.ndarray:
     return silicon_index(wavelength_nm, tail_nm).alpha_cm1
 
 

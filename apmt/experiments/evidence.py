@@ -128,7 +128,11 @@ def load_s32_curves(method: str = "hzb_M1") -> Dict[str, CurveEvidence]:
     out = {}
     for curve, label_key in (("perov", "perovskite"), ("si", "silicon")):
         nm = d[f"{method}_{curve}_nm"].astype(float)
-        eqe = np.clip(d[f"{method}_{curve}_eqe"].astype(float), 0.0, 100.0)
+        # V1.9-H: detect (not assume) the stored scale, exactly as the Fig. 4E
+        # loader and the 1-R branch already do; the decision is recorded below.
+        raw_eqe = d[f"{method}_{curve}_eqe"].astype(float)
+        scale, unit = detect_curve_scale(raw_eqe)
+        eqe = np.clip(raw_eqe * scale, 0.0, 100.0)
         short = "perovskite" if label_key == "perovskite" else "si"
         prefix = "hzb" if method.startswith("hzb") else "sahli"
         reported = results["labels"].get(f"{prefix}_{short}")
@@ -139,7 +143,8 @@ def load_s32_curves(method: str = "hzb_M1") -> Dict[str, CurveEvidence]:
             integrated_value=float(m["perovskite_jph" if label_key == "perovskite"
                                       else "si_jph"]),
             notes="pixel-traced from the committed raster; 3-method reproduction "
-                  "documented in v1.8_eqe_digitization_audit.md")
+                  "documented in v1.8_eqe_digitization_audit.md. Stored units: "
+                  + unit)
     if f"{method}_onr_nm" in d:
         nm = d[f"{method}_onr_nm"].astype(float)
         raw = d[f"{method}_onr_eqe"].astype(float)

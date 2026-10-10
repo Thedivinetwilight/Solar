@@ -187,12 +187,16 @@ def solve_equilibrium(ps: ParamSet, absorbed_power_mw_cm2: float,
     # stack). 1.0 is the conservative value. Without this factor the registered
     # parameter would be structurally dead -- flagged as a defect by the V1.9-C
     # inert screener, and fixed here rather than declared inert.
+    # V1.9-H repair (F-heat): the documented form is f_heat * (absorbed -
+    # extracted); the old code subtracted the FULL extracted power from the
+    # fractioned absorbed power. Identical at the default f_heat = 1.0.
     f_heat = float(ps["absorption_heat_fraction"])
 
     def heat_load(T: float) -> float:
         key = round(float(T), 9)
         if key not in _cache:
-            _cache[key] = f_heat * absorbed_power_mw_cm2 - electrical_power_fn(float(T))
+            _cache[key] = f_heat * (absorbed_power_mw_cm2
+                                    - electrical_power_fn(float(T)))
         return _cache[key]
 
     def residual(T: float) -> float:

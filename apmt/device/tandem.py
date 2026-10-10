@@ -11,7 +11,8 @@ Two solvers, one physics
                             table is inverted by interpolation, and the whole
                             tandem J-V curve is assembled with NumPy. Numerically
                             equivalent to the reference within a documented and
-                            tested tolerance (tests/test_v19_solvers.py).
+                            tested tolerance
+                            (tests/test_v19_engine.py: the reference-vs-fast agreement contract).
 
 Physics (identical in both)
 ---------------------------
@@ -54,7 +55,7 @@ from ..core.numerics import golden_section_max
 from ..optics.stack import TandemOpticsResult, solve_tandem_optics
 from ..params.registry import ParamSet
 from ..spectra.reference import Spectrum, reference
-from .recombination import j0_budget, j0_srh_temperature_scaled
+from .recombination import j0_budget
 from .subcell import (SubcellModel, SubcellNoVocError, current_at_voltage,
                       open_circuit_voltage, voltage_at_current)
 
@@ -225,20 +226,6 @@ def _subcell_from_params(ps: ParamSet, optics: TandemOpticsResult, temperature_k
                        doping_cm3=ps["silicon_doping_cm3"],
                        srv_cm_s=ps["silicon_srv_cm_s"])
 
-    if abs(temperature_k - 298.15) > 1e-9:
-        from ..materials.perovskite import perovskite_bandgap_temperature as pbg
-        eg_top_ref = ps["perovskite_eg_ev"]
-        eg_bot_ref = varshni_bandgap(ps["silicon_eg_ev"], 298.15)
-        j0_srh_top = j0_srh_temperature_scaled(
-            j0_top.j0_srh_ma_cm2, temperature_k, 298.15, eg_top, eg_top_ref,
-            ps["ideality_top"])
-        j0_srh_bot = j0_srh_temperature_scaled(
-            j0_bot.j0_srh_ma_cm2, temperature_k, 298.15, eg_bottom, eg_bot_ref,
-            ps["ideality_bottom"])
-        j0_top = j0_budget(eg_top, temperature_k, ps["radiative_efficiency_top"],
-                           ps["ideality_top"], j0_srh_override_ma_cm2=j0_srh_top)
-        j0_bot = j0_budget(eg_bottom, temperature_k, ps["radiative_efficiency_bottom"],
-                           ps["ideality_bottom"], j0_srh_override_ma_cm2=j0_srh_bot)
     if not include_srh:
         # ideal-single-diode limit: the SRH/surface channel is removed by
         # construction (a zero, not a huge, recombination current)
@@ -322,14 +309,20 @@ def junction_temperature(ps: ParamSet) -> dict:
 # shared curve metrics / result assembly
 # ---------------------------------------------------------------------------
 def _root(f, lo: float, hi: float, tol: float = 1e-12, max_iter: int = 80) -> float:
-    """Bisection on a sign-changing scalar function (used on interpolants)."""
+    """Bisection on a sign-changing scalar function (used on interpolants).
+
+    Callers MUST pre-check the bracket: if f(lo) and f(hi) share a sign this
+    returns the interval midpoint, which is indistinguishable from a genuine
+    root at the midpoint. Never use the return value without a bracket check
+    (V1.9-H audit: the Jsc conditioning diagnostic did exactly that).
+    """
     f_lo, f_hi = f(lo), f(hi)
     if f_lo == 0.0:
         return lo
     if f_hi == 0.0:
         return hi
     if (f_lo > 0) == (f_hi > 0):
-        return 0.5 * (lo + hi)          # caller-visible: no bracket
+        return 0.5 * (lo + hi)          # NO bracket: midpoint, not a root
     for _ in range(max_iter):
         mid = 0.5 * (lo + hi)
         f_mid = f(mid)
@@ -402,7 +395,15 @@ def curve_metrics_by_current(J: np.ndarray, V_of_J: np.ndarray,
     # It is reported (never used) so the reader can see why Jsc is defined as
     # min(Jsc_top, Jsc_bottom) rather than read off the curve.
     dv_probe = 0.020
-    if v_of_j(0.0) >= dv_probe:
+    # V1.9-H repair (J-sens): the slope is only defined when V(J) actually
+    # crosses the probe bias on this curve. Previously an unbracketed probe
+    # silently returned the bisection midpoint, fabricating sens = j_hi/0.04
+    # (385.6 at the twin point) with a physical-sounding comment. A mismatched
+    # tandem never reaches V = 20 mV (the non-limiting subcell still holds
+    # ~0.5 V when the limiting one hits Jsc), so the honest value is NaN plus
+    # an explicit bracket flag. Matched tandems still report a finite slope.
+    sens_bracketed = bool(v_of_j(0.0) >= dv_probe and v_of_j(j_hi) <= dv_probe)
+    if sens_bracketed:
         j_at_dv = _root(lambda j: v_of_j(j) - dv_probe, 0.0, j_hi, tol=1e-12)
         sens = abs(j_hi - j_at_dv) / dv_probe
     else:
@@ -410,7 +411,8 @@ def curve_metrics_by_current(J: np.ndarray, V_of_J: np.ndarray,
     return {"jsc_curve_ma_cm2": j_hi, "voc_v": voc, "pce_pct": pmax,
             "vmp_v": v_of_j(jmp), "jmp_ma_cm2": terminal_current(jmp),
             "voc_current_ma_cm2": j_voc,
-            "jsc_bias_sensitivity_ma_cm2_per_v": sens}
+            "jsc_bias_sensitivity_ma_cm2_per_v": sens,
+            "jsc_bias_sensitivity_bracketed": sens_bracketed}
 
 
 def _build_result(device: TandemDevice, temperature_k: float, metrics: dict, *,
@@ -466,6 +468,8 @@ def _build_result(device: TandemDevice, temperature_k: float, metrics: dict, *,
         metrics.get("jsc_from_curve_ma_cm2", float("nan")))
     detail["jsc_bias_sensitivity_ma_cm2_per_v"] = float(
         metrics.get("jsc_bias_sensitivity_ma_cm2_per_v", float("nan")))
+    detail["jsc_bias_sensitivity_bracketed"] = bool(
+        metrics.get("jsc_bias_sensitivity_bracketed", False))
     if device.optics is not None:
         detail["photon_budget_mA_cm2"] = device.optics.absorbed_photon_budget()
     if extra:
@@ -568,9 +572,11 @@ def current_density_vectorized(model: SubcellModel, voltage_v: np.ndarray,
     """Vectorised implicit solve of J(V) for a subcell with Rs and/or Rsh.
 
     Newton on  f(J) = Jph + coupling - J0r expm1(Vj/kT) - J0s expm1(Vj/(n kT))
-                      - Vj/Rsh - J ,  Vj = V - J Rs/1000 ,
-    with f'(J) = (D_rad + D_srh + 1/Rsh)(Rs/1000) - 1 < 0.  For Rs = 0 the
-    equation is linear in J, so the ideal case is reproduced exactly in one step.
+                      - Vj/Rsh - J ,  Vj = V + J Rs/1000 ,
+    with f'(J) = -((D_rad + D_srh + 1/Rsh)(Rs/1000) + 1) < 0 always.
+    V1.9-H repair (Rs-sign): Vj carries a PLUS sign (junction = terminal +
+    resistive drop); the old minus sign made Rs raise the current. For Rs = 0
+    the equation is linear in J, so the ideal case is reproduced exactly.
     """
     V = np.atleast_1d(np.asarray(voltage_v, dtype=float))
     kT = K_B_EV_K * temperature_k
@@ -587,7 +593,7 @@ def current_density_vectorized(model: SubcellModel, voltage_v: np.ndarray,
     iters = 0
     for it in range(1, max_iter + 1):
         iters = it
-        vj = V - J * rs
+        vj = V + J * rs
         xr = np.clip(vj / kT, -700.0, 700.0)
         xs = np.clip(vj / (n_id * kT), -700.0, 700.0)
         with np.errstate(over="ignore"):
@@ -596,11 +602,11 @@ def current_density_vectorized(model: SubcellModel, voltage_v: np.ndarray,
             d_rad_p = j0_rad * np.exp(xr) / kT
             d_srh_p = j0_srh * np.exp(xs) / (n_id * kT)
         f = jph + coupling - d_rad - d_srh - vj * g_sh - J
-        step = f / ((d_rad_p + d_srh_p + g_sh) * rs - 1.0)
+        step = f / (-((d_rad_p + d_srh_p + g_sh) * rs + 1.0))
         J = np.clip(J - step, lo, hi)
         if np.max(np.abs(step)) <= tol:
             break
-    vj = V - J * rs
+    vj = V + J * rs
     with np.errstate(over="ignore"):
         resid = (jph + coupling
                  - j0_rad * np.expm1(np.clip(vj / kT, -700, 700))
@@ -641,6 +647,25 @@ def solve_tandem_fast(device: TandemDevice, temperature_k: float,
     def j_of_v(v, V_tab, J_tab):
         return np.interp(v, V_tab, J_tab)
 
+    def v_of_j_tied(sub, q, J_asc, V_asc, jsc):
+        """Table V(J) inversion with an exact-scalar repair of flat-tie queries.
+
+        V1.9-H repair (F1): where J(V) is numerically flat (below diode
+        turn-on), table rows tie at J ~= Jsc and np.interp tie-breaking
+        returns the pad endpoint (V = -v_pad) instead of V(Jsc) = 0,
+        poisoning the V(J) grid endpoint by ~250 mV. Queries within
+        jsc*1e-9 of Jsc (in practice the grid endpoint of the limiting
+        subcell) use the exact scalar inversion instead -- a handful of
+        bookkeeping evaluations, cf. test_fast_solver_is_actually_vectorised.
+        """
+        scalar = np.ndim(q) == 0
+        qq = np.atleast_1d(np.clip(np.asarray(q, dtype=float), J_asc[0], J_asc[-1]))
+        out = np.asarray(np.interp(qq, J_asc, V_asc), dtype=float)
+        tie = np.abs(qq - jsc) < jsc * 1e-9
+        for idx in np.nonzero(tie)[0]:
+            out[idx] = voltage_at_current(sub, float(qq[idx]), temperature_k)
+        return out[0] if scalar else out
+
     j_top_sc = float(j_of_v(0.0, Vt_tab, Jt_tab))
     j_bot_sc = float(j_of_v(0.0, Vb_tab, Jb_tab))
     if j_top_sc <= 0 or j_bot_sc <= 0:
@@ -657,35 +682,35 @@ def solve_tandem_fast(device: TandemDevice, temperature_k: float,
     if beta > 0.0 or (beta_bt > 0.0 and f_up > 0.0):
         converged = False
         j0r_t, j0r_b = top.j0_rad_effective(), bottom.j0_rad_effective()
-        Vt = np.interp(np.clip(J, Jt_asc[0], Jt_asc[-1]), Jt_asc, Vt_asc)
-        Vb = np.interp(np.clip(J, Jb_asc[0], Jb_asc[-1]), Jb_asc, Vb_asc)
+        Vt = v_of_j_tied(top, J, Jt_asc, Vt_asc, j_top_sc)
+        Vb = v_of_j_tied(bottom, J, Jb_asc, Vb_asc, j_bot_sc)
         for it in range(1, max_iter + 1):
             t_new = beta_bt * f_up * j0r_b * np.expm1(np.clip(Vb / kT, -700, 700))
             b_new = beta * j0r_t * np.expm1(np.clip(Vt / kT, -700, 700))
             d = max(float(np.max(np.abs(t_new - t_shift))),
                     float(np.max(np.abs(b_new - b_shift))))
             t_shift, b_shift = t_new, b_new
-            Vt = np.interp(np.clip(J - t_shift, Jt_asc[0], Jt_asc[-1]), Jt_asc, Vt_asc)
-            Vb = np.interp(np.clip(J - b_shift, Jb_asc[0], Jb_asc[-1]), Jb_asc, Vb_asc)
+            Vt = v_of_j_tied(top, J - t_shift, Jt_asc, Vt_asc, j_top_sc)
+            Vb = v_of_j_tied(bottom, J - b_shift, Jb_asc, Vb_asc, j_bot_sc)
             if d <= coupling_tol:
                 converged = True
                 break
-    Vt = np.interp(np.clip(J - t_shift, Jt_asc[0], Jt_asc[-1]), Jt_asc, Vt_asc)
-    Vb = np.interp(np.clip(J - b_shift, Jb_asc[0], Jb_asc[-1]), Jb_asc, Vb_asc)
+    Vt = v_of_j_tied(top, J - t_shift, Jt_asc, Vt_asc, j_top_sc)
+    Vb = v_of_j_tied(bottom, J - b_shift, Jb_asc, Vb_asc, j_bot_sc)
     V = Vt + Vb - J * device.rs_ohm_cm2 / 1000.0
 
     metrics = curve_metrics_by_current(J, V, device.rsh_ohm_cm2)
     jmp = metrics["jmp_ma_cm2"]
+    q_top_mpp = jmp - float(np.interp(jmp, J, t_shift))
+    q_bot_mpp = jmp - float(np.interp(jmp, J, b_shift))
     return _build_result(
         device, temperature_k, metrics, converged=converged, iterations=it,
         solver="fast",
         eg_top=device.mechanism_flags.get("eg_top", 0.0),
         eg_bottom=device.mechanism_flags.get("eg_bottom", 0.0),
         j_top_sc=j_top_sc, j_bot_sc=j_bot_sc,
-        v_top_mpp=float(np.interp(np.clip(jmp - float(np.interp(jmp, J, t_shift)),
-                                          Jt_asc[0], Jt_asc[-1]), Jt_asc, Vt_asc)),
-        v_bottom_mpp=float(np.interp(np.clip(jmp - float(np.interp(jmp, J, b_shift)),
-                                             Jb_asc[0], Jb_asc[-1]), Jb_asc, Vb_asc)),
+        v_top_mpp=float(v_of_j_tied(top, q_top_mpp, Jt_asc, Vt_asc, j_top_sc)),
+        v_bottom_mpp=float(v_of_j_tied(bottom, q_bot_mpp, Jb_asc, Vb_asc, j_bot_sc)),
         extra={"subcell_table_diagnostics": {"top": diag_t, "bottom": diag_b,
                                              "n_table": n_table}})
 

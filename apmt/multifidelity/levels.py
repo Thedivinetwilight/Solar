@@ -15,8 +15,10 @@ same invariant engine.
     L4  full              + series/shunt resistance network and all luminescent
                           coupling / photon-recycling mechanisms (the default
                           configuration of evaluate_tandem).
-    L5  refined           L4 with a finer wavelength grid, finer subcell tables
-                          and a denser bias curve (numerical-fidelity cross-check).
+    L5  refined           L4 with finer subcell tables and a denser bias curve
+                          (solver-grid-only refinement; the wavelength grid is
+                          unchanged -- V1.9-H doc fix, the old text claimed a
+                          finer wavelength grid that no code path implements).
 
 Use :func:`evaluate_level` for a single point and :func:`divergence_study` for a
 level-to-level comparison over a parameter ensemble. Divergence classes are
@@ -44,8 +46,8 @@ LEVEL_DESCRIPTIONS = {
     "L3": "thermal: + self-heating energy balance and T-dependent bandgaps",
     "L4": "full: + series/shunt resistance and luminescent coupling / photon "
           "recycling mechanisms",
-    "L5": "refined: L4 with finer wavelength grid and solver tolerances "
-          "(numerical-fidelity cross-check)",
+    "L5": "refined: L4 with finer subcell tables and denser bias curve "
+          "(solver-grid-only numerical cross-check; wavelength grid unchanged)",
 }
 
 
@@ -59,7 +61,9 @@ class LevelOptions:
     include_resistance: bool = True
     include_thermal: bool = True
     include_coupling: bool = True
-    n_wavelength: Optional[int] = None  # None -> the standard 5 nm grid
+    # None -> the standard 5 nm grid. V1.9-H audit: currently UNWIRED (no
+    # optics path reads this field); L5 refines solver grids only, see above.
+    n_wavelength: Optional[int] = None
     n_table: int = 4001
     n_curve_points: int = 1200
     solver: str = "auto"
@@ -159,8 +163,12 @@ def evaluate_with_options(opts: LevelOptions, ps: ParamSet, *,
         return fn(dev, T, n_table=opts.n_table, n_curve_points=opts.n_curve_points)
 
     if opts.include_thermal:
-        from ..device.tandem import ElectricalPowerExtractor
-        absorbed = opt.absorbed_power_mw_cm2() * float(ps_l["irradiance_suns"])
+        from ..device.tandem import ElectricalPowerExtractor, spectrum_for
+        # V1.9-H: pass the level's (possibly shifted) spectrum, as
+        # evaluate_tandem does; the old default-spectrum call silently ignored
+        # spectrum_shift_nm (identical at shift = 0).
+        absorbed = (opt.absorbed_power_mw_cm2(spectrum_for(ps_l))
+                    * float(ps_l["irradiance_suns"]))
         extractor = ElectricalPowerExtractor(solve_at, float(ps_l["irradiance_suns"]),
                                              SUN_POWER_MW_CM2)
         from ..device.thermal import assert_inside_electrical_envelope

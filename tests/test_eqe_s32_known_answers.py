@@ -151,6 +151,9 @@ def test_s32_m2_requires_source_pdf():
         pytest.skip("data/sources/al_ashouri_accepted_manuscript.pdf absent "
                     "(external source, not committed) -> hzb_M2 200-dpi "
                     "re-render NOT VERIFIED in this checkout")
+    # V1.9-H (S32-CI): the PDF may exist where the optional extra does not
+    pytest.importorskip("pymupdf",
+                        reason="M2 needs the 'digitization' extra (pymupdf)")
     mod = _load_s32_module()
     out = mod.main(write=False, require_pdf=True)
     with open(S32_JSON) as f:
@@ -196,3 +199,32 @@ def test_no_rescaling_applied_and_history_immutable():
     m = _s32()["methods"]
     for tag in ("hzb_M1", "hzb_M2", "hzb_M3"):
         assert m[tag]["si_jph"] > 19.9  # nowhere near 16.90-17.11
+
+
+def test_s32_script_has_no_module_top_pdf_import():
+    """V1.9-H (S32-CI): pymupdf/fitz must not be imported at module top level
+    of the digitizer. It is an optional extra used solely by the M2 PDF
+    re-render; a top-level import broke the M1/M3/sahli deterministic re-run
+    (and the CI determinism check) in environments without the extra."""
+    import ast
+    tree = ast.parse(open(S32_SCRIPT).read())
+    top_imports = set()
+    for node in tree.body:
+        if isinstance(node, ast.Import):
+            top_imports.update(a.name.split(".")[0] for a in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            top_imports.add(node.module.split(".")[0])
+    assert "pymupdf" not in top_imports
+    assert "fitz" not in top_imports
+
+
+def test_evidence_loader_records_scale_and_category():
+    """V1.9-H: the S32 evidence loader detects (not assumes) the stored curve
+    scale and records the decision; every curve stays DIGITIZED."""
+    from apmt.experiments.evidence import load_s32_curves
+    c = load_s32_curves("hzb_M1")
+    for key in ("perovskite", "silicon", "one_minus_r"):
+        assert c[key].category.value == "DIGITIZED", key
+        assert "Stored units:" in c[key].notes, key
+    assert "percent (0-100)" in c["perovskite"].notes
+    assert c["perovskite"].as_fraction().max() <= 1.0

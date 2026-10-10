@@ -30,8 +30,8 @@
    "sha256": "0653972bf62f13c38b3c705e682e525d1c2c82cce2b77db8dba61d95971d1667"
   },
   "data/v19_calibration.json": {
-   "bytes": 7168,
-   "sha256": "6da5a9e3c275e9a4bd0e11679e32168bd37f5cd6eb4e95a834eb7e805ae8b392"
+   "bytes": 43418,
+   "sha256": "a7944b35af172acb843d7db16863592d3446e1d65aee384072774a62b025e977"
   },
   "data/v19_mechanism_campaign.json": {
    "bytes": 14127,

@@ -191,7 +191,17 @@ def test_concentrated_regime_restricts_the_thermal_axis_and_verifies_the_box():
     assert "thermal_resistance_k_cm2_w" in box["restricted_axes"]
     i = DESIGN_PARAMETERS.index("thermal_resistance_k_cm2_w")
     assert box["high"][i] < spec("thermal_resistance_k_cm2_w").high
-    assert box["probe_history"][-1]["n_invalid"] == 0
+    # V1.9-H pin move (documented, not silent): with corrected physics
+    # (R1/T21/U1) the f = 0.75 bisection trial finds one genuinely invalid
+    # joint corner (converged Tj = 420.9 K exceeds the registered [220, 400] K
+    # electrical window), so bisection settles at f = 0.5 instead of 0.75.
+    # The protocol guarantee is that the RETURNED box was verified by a clean
+    # probe -- that is what is pinned here, not the last trial (a bisection
+    # trial is *supposed* to be allowed to fail; that is how it brackets).
+    assert box["envelope_fraction"] == pytest.approx(0.5)
+    passing = [h for h in box["probe_history"] if h["complete"]]
+    assert len(passing) == 1 and passing[0]["n_invalid"] == 0
+    assert passing[0]["phase"] == "shrink_restricted_axes_0.5000"
     # every other axis keeps its registered range under concentration
     lo_reg, hi_reg = box_at_scale(DESIGN_PARAMETERS, 1.0)
     for j, name in enumerate(DESIGN_PARAMETERS):
@@ -417,3 +427,25 @@ def test_committed_sensitivity_artifact_is_verifiable():
                 assert abs(v) >= study["detection_floor"], k
     for name, res in art["regimes"].items():
         assert res["indices"]["pce_pct"]["pairwise_indices_reportable"] is False
+
+
+def test_sobol_first_order_uses_triple_mask_with_missing_data():
+    """V1.9-H: the Saltelli first-order estimator consumes (A, B, AB_i)
+    triplets; NaN rows knocked out at DIFFERENT positions in A and AB_i must
+    not leak NaN into the index (the old pair-mask did exactly that)."""
+    design = ishigami_design(n_base=512, seed=9)
+    Y = ishigami(design.matrix()).copy()
+    n = design.n_base
+    Y[0:3] = np.nan              # f_A rows 0..2 missing
+    Y[2 * n + 3:2 * n + 5] = np.nan   # f_AB_0 rows 3..4 missing (other positions)
+    res = sobol_indices(Y, design, output="f", bootstrap=0)
+    assert res.complete is False
+    assert res.n_missing == 5
+    assert np.isfinite(res.first).all(), res.first
+    assert np.isfinite(res.total).all()
+    # hand triple-masked computation for i = 0
+    f_A, f_B, f_AB0 = Y[:n], Y[n:2 * n], Y[2 * n:3 * n]
+    m3 = ~(np.isnan(f_A) | np.isnan(f_B) | np.isnan(f_AB0))
+    var = float(np.nanvar(np.concatenate([f_A, f_B]), ddof=1))
+    hand = float(np.mean(f_B[m3] * (f_AB0[m3] - f_A[m3]))) / var
+    assert res.first[0] == pytest.approx(hand, rel=1e-12)

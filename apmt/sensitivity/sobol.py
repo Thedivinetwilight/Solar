@@ -243,9 +243,13 @@ def sobol_indices(Y: np.ndarray, design: SaltelliDesign, output: str = "",
     first = np.full(d, np.nan)
     total = np.full(d, np.nan)
     for i in range(d):
-        b_i, ab_i, n1 = _pair(f_B, f_AB[i])
-        if n1:
-            first[i] = float(np.mean(b_i * (ab_i - f_A[~(np.isnan(f_B) | np.isnan(f_AB[i]))]))) / var
+        # V1.9-H: the Saltelli first-order estimator consumes TRIPLETS
+        # (f_A, f_B, f_AB_i); masking only the (B, AB_i) pair let NaN in f_A
+        # leak into the mean and silently NaN the index. Triple-wise mask.
+        m3 = ~(np.isnan(f_A) | np.isnan(f_B) | np.isnan(f_AB[i]))
+        if m3.sum():
+            first[i] = (float(np.mean(f_B[m3] * (f_AB[i][m3] - f_A[m3])))
+                        / var)
         a_i, ab_i2, n2 = _pair(f_A, f_AB[i])
         if n2:
             total[i] = float(np.mean((a_i - ab_i2) ** 2)) / (2.0 * var)

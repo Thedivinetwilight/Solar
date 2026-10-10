@@ -33,7 +33,7 @@ import numpy as np
 
 from ..core.numerics import trapz
 from ..materials.perovskite import perovskite_index
-from ..materials.silicon import silicon_index
+from ..materials.silicon import SI_SUBGAP_TAIL_NM, silicon_index
 from ..params.registry import ParamSet
 from ..spectra.reference import Spectrum, reference
 from .tmm import Layer, OpticsResult, solve_incoherent_substrate, solve_stack
@@ -315,7 +315,7 @@ def solve_beer_lambert_optics(ps: ParamSet, spectrum: Optional[Spectrum] = None,
     Closure is exact by construction (A_top + A_bot = 1 - R_0, T = 0).
     """
     from ..materials.perovskite import perovskite_alpha_cm1, perovskite_index
-    from ..materials.silicon import silicon_index
+    from ..materials.silicon import SI_SUBGAP_TAIL_NM, silicon_index
 
     sp = spectrum or reference()
     grid = TANDEM_WAVELENGTH_NM if wl is None else np.asarray(wl, dtype=float)

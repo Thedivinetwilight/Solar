@@ -3,15 +3,22 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any
 
 import numpy as np
 
 from .data import OUTPUT_UNITS
-from .domain import (IN_DOMAIN_UNCERTAIN, IN_DOMAIN_VALIDATED, INVALID_INPUT,
-                     MODEL_UNAVAILABLE, OUT_OF_DOMAIN, SupportProfile)
+from .domain import (
+    IN_DOMAIN_UNCERTAIN,
+    IN_DOMAIN_VALIDATED,
+    INVALID_INPUT,
+    MODEL_UNAVAILABLE,
+    OUT_OF_DOMAIN,
+    SupportProfile,
+)
 from .models import FittedRegressor
 
 ENGINE_VERSION = "v19e-surrogate-engine/1.0"
@@ -60,40 +67,9 @@ class SurrogateBundle:
             return {"status": MODEL_UNAVAILABLE,
                     "reason": f"no trained model for operating regime {regime!r}",
                     "predictions": {}, "model_version": self.version}
-        if not isinstance(parameters, Mapping):
-            return {"status": INVALID_INPUT, "reason": "parameters must be a mapping",
-                    "predictions": {}, "model_version": self.version}
-        missing = [n for n in self.feature_names if n not in parameters]
-        if missing:
-            return {"status": INVALID_INPUT, "reason": f"missing features: {missing}",
-                    "predictions": {}, "model_version": self.version}
-        try:
-            x = np.asarray([float(parameters[n]) for n in self.feature_names], dtype=float)
-        except (TypeError, ValueError, OverflowError):
-            return {"status": INVALID_INPUT, "reason": "features must be numeric",
-                    "predictions": {}, "model_version": self.version}
-        if not np.all(np.isfinite(x)):
-            return {"status": INVALID_INPUT, "reason": "features must be finite",
-                    "predictions": {}, "model_version": self.version}
-        changed_unmodeled = []
-        for name in self.fixed_parameter_names:
-            if name in parameters:
-                try:
-                    value = float(parameters[name])
-                except (ValueError, TypeError, OverflowError):
-                    return {"status": INVALID_INPUT, "reason": f"{name} must be numeric",
-                            "predictions": {}, "model_version": self.version}
-                if not np.isfinite(value):
-                    return {"status": INVALID_INPUT, "reason": f"{name} must be finite",
-                            "predictions": {}, "model_version": self.version}
-                default = float(self.registry_defaults[name])
-                if abs(value - default) > 1e-12 * max(1.0, abs(default)):
-                    changed_unmodeled.append(name)
-        if changed_unmodeled:
-            return {"status": MODEL_UNAVAILABLE,
-                    "reason": "surrogate was trained with these unmodeled parameters fixed at registry defaults: "
-                              + ", ".join(changed_unmodeled),
-                    "predictions": {}, "model_version": self.version}
+        x, error = self._validated_feature_vector(parameters)
+        if error is not None:
+            return error
 
         entries: dict[str, dict] = {}
         std_ratios, disagreement_ratios = [], []
@@ -143,7 +119,7 @@ class SurrogateBundle:
                     "family_disagreement_std": disagreement,
                     "family_disagreement_ratio": disagreement_ratio,
                 }
-            except Exception as exc:  # downstream inference must fail closed
+            except Exception as exc:  # noqa: BLE001 - inference must fail closed
                 return {"status": MODEL_UNAVAILABLE,
                         "reason": f"model prediction failed for {target}: {type(exc).__name__}: {exc}",
                         "predictions": {}, "model_version": self.version}
@@ -163,6 +139,191 @@ class SurrogateBundle:
             "physics_model_uncertainty": "NOT_QUANTIFIED_BY_SURROGATE",
             "experimental_uncertainty": "NOT_QUANTIFIED; NO EXPERIMENTAL DATA USED",
         }
+
+    def _validated_feature_vector(
+            self, parameters: Mapping[str, float]) -> tuple[np.ndarray | None, dict | None]:
+        """Validate one parameter mapping; shared by predict() and predict_batch().
+
+        Returns ``(x, None)`` on success or ``(None, error_dict)`` with the
+        exact INVALID_INPUT / MODEL_UNAVAILABLE payload ``predict()`` returns.
+        """
+        if not isinstance(parameters, Mapping):
+            return None, {"status": INVALID_INPUT, "reason": "parameters must be a mapping",
+                          "predictions": {}, "model_version": self.version}
+        missing = [n for n in self.feature_names if n not in parameters]
+        if missing:
+            return None, {"status": INVALID_INPUT, "reason": f"missing features: {missing}",
+                          "predictions": {}, "model_version": self.version}
+        try:
+            x = np.asarray([float(parameters[n]) for n in self.feature_names], dtype=float)
+        except (TypeError, ValueError, OverflowError):
+            return None, {"status": INVALID_INPUT, "reason": "features must be numeric",
+                          "predictions": {}, "model_version": self.version}
+        if not np.all(np.isfinite(x)):
+            return None, {"status": INVALID_INPUT, "reason": "features must be finite",
+                          "predictions": {}, "model_version": self.version}
+        changed_unmodeled = []
+        for name in self.fixed_parameter_names:
+            if name in parameters:
+                try:
+                    value = float(parameters[name])
+                except (ValueError, TypeError, OverflowError):
+                    return None, {"status": INVALID_INPUT,
+                                  "reason": f"{name} must be numeric",
+                                  "predictions": {}, "model_version": self.version}
+                if not np.isfinite(value):
+                    return None, {"status": INVALID_INPUT,
+                                  "reason": f"{name} must be finite",
+                                  "predictions": {}, "model_version": self.version}
+                default = float(self.registry_defaults[name])
+                if abs(value - default) > 1e-12 * max(1.0, abs(default)):
+                    changed_unmodeled.append(name)
+        if changed_unmodeled:
+            return None, {"status": MODEL_UNAVAILABLE,
+                          "reason": "surrogate was trained with these unmodeled parameters "
+                                    "fixed at registry defaults: " + ", ".join(changed_unmodeled),
+                          "predictions": {}, "model_version": self.version}
+        return x, None
+
+    def _prediction_entries_matrix(self, X: np.ndarray, regime: str,
+                                   ) -> tuple[list[dict] | None, list[float] | None,
+                                              list[float] | None, dict | None]:
+        """Per-target predictions for a validated N x D matrix (V1.9-F batch path).
+
+        Returns ``(rows_entries, std_ratios, disagreement_ratios, batch_error)``.
+        The per-row arithmetic is identical to :meth:`predict`; only the
+        estimator calls are vectorized over rows.  ``batch_error`` mirrors the
+        MODEL_UNAVAILABLE payload ``predict()`` returns when a target fails.
+        """
+        n_rows = int(np.asarray(X).shape[0])
+        rows_entries: list[dict] = [{} for _ in range(n_rows)]
+        rows_std: list[list[float]] = [[] for _ in range(n_rows)]
+        rows_dis: list[list[float]] = [[] for _ in range(n_rows)]
+        try:
+            for target, model in self.selected_models.get(regime, {}).items():
+                pred, raw_std = model.predict(X, return_std=True)
+                mu_vec = np.asarray(pred, float).reshape(-1)
+                if mu_vec.shape[0] != n_rows or not np.all(np.isfinite(mu_vec)):
+                    bad = int(np.flatnonzero(~np.isfinite(mu_vec))[0]) if n_rows else 0
+                    return None, None, None, {
+                        "status": MODEL_UNAVAILABLE,
+                        "reason": f"non-finite prediction from {target} (batch row {bad})",
+                        "predictions": {}, "model_version": self.version}
+                alternatives = self.alternative_models.get(regime, {}).get(target, [])
+                alt_matrix = [np.asarray(alt.predict(X, return_std=False)[0],
+                                         float).reshape(-1) for alt in alternatives]
+                card = self.model_cards[regime][target]
+                radius = (float(model.conformal_radius)
+                          if model.conformal_radius is not None else None)
+                target_scale = max(float(card.get("target_scale", model.target_scale)), 1e-14)
+                disagreement_scale = card.get("calibration_rmse")
+                if disagreement_scale is None:
+                    disagreement_scale = card.get("validation_rmse", 0.0)
+                denom = max(float(disagreement_scale), target_scale * 1e-8, 1e-12)
+                for i in range(n_rows):
+                    mu = float(mu_vec[i])
+                    alt_values = [mu] + [float(column[i]) for column in alt_matrix
+                                        if np.isfinite(column[i])]
+                    disagreement = (float(np.std(alt_values, ddof=1))
+                                    if len(alt_values) > 1 else 0.0)
+                    std_value = None if raw_std is None else float(np.asarray(raw_std)[i])
+                    std_ratio = (std_value / target_scale) if std_value is not None else 0.0
+                    disagreement_ratio = disagreement / denom
+                    if std_value is not None:
+                        rows_std[i].append(std_ratio)
+                    rows_dis[i].append(disagreement_ratio)
+                    rows_entries[i][target] = {
+                        "prediction": mu, "unit": OUTPUT_UNITS.get(target, ""),
+                        "model_family": model.family,
+                        "model_version": model.model_version,
+                        "training_data_fingerprint": model.training_fingerprint,
+                        "training_points": model.n_training,
+                        "calibration_data_fingerprint": model.calibration_fingerprint,
+                        "calibration_points": model.calibration_points,
+                        "uncertainty_calibration_status": card.get(
+                            "conformal_calibration_status", "NOT_CALIBRATED"),
+                        "raw_predictive_std": std_value,
+                        "raw_uncertainty_status": model.raw_uncertainty_note,
+                        "conformal_coverage": (model.conformal_coverage
+                                               if radius is not None else None),
+                        "conformal_radius": radius,
+                        "conformal_interval": ([mu - radius, mu + radius]
+                                               if radius is not None else None),
+                        "family_disagreement_std": disagreement,
+                        "family_disagreement_ratio": disagreement_ratio,
+                    }
+        except Exception as exc:  # downstream inference must fail closed  # noqa: BLE001
+            return None, None, None, {
+                "status": MODEL_UNAVAILABLE,
+                "reason": f"model prediction failed in batch path: "
+                          f"{type(exc).__name__}: {exc}",
+                "predictions": {}, "model_version": self.version}
+        return (rows_entries,
+                [max(v, default=0.0) for v in rows_std],
+                [max(v, default=0.0) for v in rows_dis], None)
+
+    def predict_batch(self, rows: Sequence[Mapping[str, float]], *,
+                      regime: str) -> dict:
+        """Vectorized batch prediction with per-row ``predict()`` payloads.
+
+        Row ``i`` of ``results`` is numerically identical to
+        ``predict(rows[i], regime=regime)``; only the estimator calls are
+        batched (one matrix call per fitted target/alternative instead of one
+        call per row).  Validation, support classification, conformal
+        intervals and fail-closed behavior are unchanged.
+        """
+        if regime not in self.regimes:
+            return {"batch_status": MODEL_UNAVAILABLE,
+                    "reason": f"no trained model for operating regime {regime!r}",
+                    "regime": regime, "n_rows": 0, "results": [],
+                    "model_version": self.version}
+        row_list = list(rows)
+        vectors: list[np.ndarray | None] = []
+        errors: list[dict | None] = []
+        for parameters in row_list:
+            x, error = self._validated_feature_vector(parameters)
+            vectors.append(x)
+            errors.append(error)
+        valid_index = [i for i, x in enumerate(vectors) if x is not None]
+        results: list[dict] = [{} for _ in row_list]
+        for i, error in enumerate(errors):
+            if error is not None:
+                results[i] = dict(error)
+        if valid_index:
+            X = np.asarray([vectors[i] for i in valid_index], float)
+            entries, std_ratios, disagreements, batch_error = (
+                self._prediction_entries_matrix(X, regime))
+            if batch_error is not None:
+                for i in valid_index:
+                    results[i] = dict(batch_error)
+            elif entries:
+                for k, i in enumerate(valid_index):
+                    if not entries[k]:
+                        results[i] = {"status": MODEL_UNAVAILABLE,
+                                      "reason": "no fitted target models",
+                                      "predictions": {}, "model_version": self.version}
+                        continue
+                    support = self.support_profiles[regime].classify(
+                        vectors[i], uncertainty_ratio=std_ratios[k],
+                        disagreement_ratio=disagreements[k])
+                    results[i] = {
+                        **support, "predictions": entries[k],
+                        "operating_regime": regime,
+                        "regime_conditions": dict(self.regimes[regime]),
+                        "model_version": self.version,
+                        "label": self.label,
+                        "training_data_fingerprint": self.training_fingerprints[regime],
+                        "physics_model_uncertainty": "NOT_QUANTIFIED_BY_SURROGATE",
+                        "experimental_uncertainty": "NOT_QUANTIFIED; NO EXPERIMENTAL DATA USED",
+                    }
+            else:
+                for i in valid_index:
+                    results[i] = {"status": MODEL_UNAVAILABLE,
+                                  "reason": "no fitted target models",
+                                  "predictions": {}, "model_version": self.version}
+        return {"batch_status": "BATCH_COMPLETE", "regime": regime,
+                "n_rows": len(row_list), "results": results,
+                "model_version": self.version}
 
     def verify_candidate(self, parameters: Mapping[str, float], *, regime: str,
                          run_l5: bool = True,

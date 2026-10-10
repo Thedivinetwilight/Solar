@@ -35,7 +35,7 @@ packages = [
     "apmt.optics", "apmt.device", "apmt.inference", "apmt.validation",
     "apmt.experiments", "apmt.multifidelity", "apmt.sensitivity",
     "apmt.optimize", "apmt.surrogate", "apmt.uq", "apmt.discovery",
-    "apmt.reproducibility", "apmt.results", "apmt.voi", "apmt.synthetic",
+    "apmt.reporting", "apmt.repro", "apmt.results", "apmt.voi", "apmt.synthetic",
 ]
 
 [tool.pytest.ini_options]

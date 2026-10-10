@@ -34,6 +34,7 @@ PINNED_ARTIFACTS = (
     "data/v19_calibration.json",
     "data/v19_oat_sensitivity.json",
     "data/v19_mechanism_campaign.json",
+    "data/v19_thermal_investigation.json",
     "data/s32_results.json",
     "data/s32_curves.npz",
     "data/eqe4e_results.json",
@@ -42,19 +43,31 @@ PINNED_ARTIFACTS = (
 
 
 def write_pins() -> dict:
-    """Record sha256 of the committed artifacts; CI verifies these."""
+    """Record sha256 of the committed artifacts; CI verifies these.
+
+    V1.9-H: preserves every other top-level section (notably "digests"),
+    the existing note, and the file formatting (indent=1, sorted keys). An
+    earlier revision rewrote the whole manifest, silently dropping the
+    engine-campaign physics digest and reflowing the file.
+    """
     import hashlib
-    pins = {"generated_by": "tools/v19_calibrate_twin.py",
-            "note": "sha256 pins of committed artifacts; CI verifies these",
-            "files": {}}
+    pins = {}
+    if os.path.exists(PINS):
+        with open(PINS) as f:
+            pins = json.load(f)
+    pins["generated_by"] = "tools/v19_calibrate_twin.py"
+    pins.setdefault("note",
+                    "sha256 pins of committed artifacts; CI verifies these")
+    files = pins.get("files", {})
     for rel in PINNED_ARTIFACTS:
         path = os.path.join(HERE, rel)
         if os.path.exists(path):
-            pins["files"][rel] = {
+            files[rel] = {
                 "sha256": hashlib.sha256(open(path, "rb").read()).hexdigest(),
                 "bytes": os.path.getsize(path)}
+    pins["files"] = files
     with open(PINS, "w") as f:
-        json.dump(pins, f, indent=2, sort_keys=True)
+        json.dump(pins, f, indent=1, sort_keys=True)
     return pins
 
 

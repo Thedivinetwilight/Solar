@@ -84,11 +84,15 @@ def current_density(model: SubcellModel, voltage_v: np.ndarray | float,
     if not np.isfinite(model.rsh_ohm_cm2) and model.rs_ohm_cm2 == 0.0:
         return J_diode
 
-    # Solve J = J_diode(V - J Rs /1000) - (V - J Rs/1000)/Rsh for J.
+    # Solve J = J_diode(V + J Rs /1000) - (V + J Rs/1000)/Rsh for J.
+    # V1.9-H repair (Rs-sign): the junction bias is the terminal bias PLUS the
+    # resistive drop (Vj = V + J*Rs); the old minus sign made series resistance
+    # *raise* the current. Production builds use subcell rs = 0 (Rs lives at
+    # the tandem level), so this repairs a latent path with zero live impact.
     out = np.empty_like(J_diode)
     for i, v in enumerate(V):
         def f(j: float) -> float:
-            vj = v - j * model.rs_ohm_cm2 / 1000.0
+            vj = v + j * model.rs_ohm_cm2 / 1000.0
             shunt = vj / model.rsh_ohm_cm2 if np.isfinite(model.rsh_ohm_cm2) else 0.0
             with np.errstate(over="ignore"):
                 d_rad = j0_rad * (np.expm1(min(max(vj / kT, -700), 700)))

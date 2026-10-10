@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Non-mutating CI checks (audit item I).
 
-Five checks, each of which must pass in a clean checkout:
+Six checks, each of which must pass in a clean checkout:
 
 1. pins      -- committed artifact hashes and byte-sizes are unchanged
                 (guards against silent number edits), and physics digests of
@@ -15,6 +15,8 @@ Five checks, each of which must pass in a clean checkout:
                 state is shown to disagree with its own evaluator;
 5. artifact-consistency -- the report exists, is non-empty and its sha256
                 matches the value recorded in the results manifest.
+6. git-clean  -- no tracked file under data/ or manifests/ was modified by
+                the checks above (same scope as the workflow step).
 
 Exit code 0 = all pass. The script never writes into the repository: it
 verifies ``git status --porcelain`` stays clean for tracked data files.
@@ -128,9 +130,11 @@ def check_artifact_consistency():
 
 
 def check_git_clean():
-    out = subprocess.run(["git", "status", "--porcelain", "--", "data"],
+    # V1.9-H: scope widened data/ -> data/ + manifests/ to match the workflow
+    # step ("Verify that no tracked artifact was mutated by the test run").
+    out = subprocess.run(["git", "status", "--porcelain", "--", "data", "manifests"],
                          cwd=HERE, capture_output=True, text=True).stdout.strip()
-    assert not out, f"CI mutated data/: {out}"
+    assert not out, f"CI mutated data/ or manifests/: {out}"
     return "no tracked data file was modified"
 
 

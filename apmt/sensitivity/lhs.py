@@ -113,7 +113,7 @@ def screen(parameters: Sequence[str] = DEFAULT_SCREEN_PARAMETERS,
         "method": ("Latin hypercube over registered ranges + Spearman rank "
                    "correlation + standardised-regression-coefficient OLS "
                    "surrogate with bootstrap CI. NOT a variance decomposition; "
-                   "Sobol indices are deferred to V1.9-D."),
+                   "see apmt/sensitivity/sobol.py for Sobol indices (V1.9-D)."),
         "parameters": list(names),
         "n_samples": n_samples,
         "seed": seed,

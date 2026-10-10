@@ -105,7 +105,12 @@ def test_level_chain_is_monotone_in_physics_and_reported():
     with_srh = solve_tandem_fast(_with_bandgap_flags(dev_srh, ps, T), T,
                                  n_table=4001, n_curve_points=1200)
     assert with_srh.voc_v < ideal.voc_v
-    assert abs(with_srh.voc_v - ideal.voc_v) < 1e-4
+    # V1.9-H: 1e-4 -> 1e-3. Post-R1 the SRH branch carries more weight at Voc
+    # (delta = 3.7404e-4 V, grid-converged to 9 decimals at 1200/2400/4800
+    # curve points), but the regime is unchanged: Voc still sits on the
+    # radiative branch and the step is still << Voc and >> grid noise (~1e-9).
+    # The physics constraint (SRH can only lower Voc) is untouched above.
+    assert abs(with_srh.voc_v - ideal.voc_v) < 1e-3
     # (c) self-heating costs efficiency and raises the junction temperature
     assert l3.temperature_k > l2.temperature_k
     assert l3.pce_pct < l2.pce_pct

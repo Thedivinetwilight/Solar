@@ -14,7 +14,8 @@ computed from the generalized Planck law without any fitted parameters:
 with emission into one hemisphere (2 pi solid angle) at the cell temperature
 and the zero-point (1/2 h nu) term omitted, i.e. the standard SQ convention.
 
-Known-answer checks (tests/test_detailed_balance.py):
+Known-answer checks
+(tests/test_v19_optics_tandem.py::test_detailed_balance_known_answers):
   * AM1.5G one sun, T = 300 K: the optimum bandgap lies in 1.25-1.45 eV and the
     optimum efficiency is 32.5-34.5 % (Shockley-Queisser 1961 / standard
     textbook values for AM1.5G);

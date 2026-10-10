@@ -34,19 +34,16 @@ from ..validation.guard import SolveRecord, evaluate_guarded
 _WORKER_STATE: dict = {}
 
 
-def _worker_init(level: str, model_form: str, campaign_id: str) -> None:
-    _WORKER_STATE.update(level=level, model_form=model_form, campaign_id=campaign_id)
-
-
-def _worker_eval(row):
-    i, values = row
-    names = _WORKER_STATE["names"]
-    ps = ParamSet.defaults().with_mapping(dict(zip(names, values)))
-    rec = evaluate_guarded(ps, level=_WORKER_STATE["level"],
-                           model_form=_WORKER_STATE["model_form"],
-                           campaign_id=_WORKER_STATE["campaign_id"],
-                           seed=_WORKER_STATE["seed"])
-    return i, rec
+def _worker_init(level: str, model_form: str, campaign_id: str,
+                 names: tuple, seed, base_dict: Optional[dict]) -> None:
+    # V1.9-H: ALL worker state travels via initargs. An earlier revision set
+    # names/seed in the parent process, so workers>1 only worked under fork
+    # (spawn children raised KeyError). base_dict (None = registry defaults)
+    # is passed too: the worker previously ignored `base`, silently diverging
+    # from the serial path whenever a non-default base was given.
+    _WORKER_STATE.update(level=level, model_form=model_form,
+                         campaign_id=campaign_id, names=tuple(names), seed=seed,
+                         base_dict=dict(base_dict) if base_dict else None)
 
 
 @dataclass
@@ -72,11 +69,14 @@ def batch_evaluate(matrix: np.ndarray, names: Sequence[str], *,
                    base: Optional[ParamSet] = None,
                    workers: int = 1,
                    warm_start: bool = True,
-                   self_heating: bool = True) -> tuple:
+                   self_heating: bool = True,
+                   mp_context: Optional[str] = None) -> tuple:
     """Evaluate a matrix of parameters (n_samples x n_parameters).
 
     Returns ``(records, summary)``. ``records[i]`` corresponds to
     ``matrix[i]``: order is preserved for both the serial and the parallel path.
+    ``mp_context`` selects the multiprocessing start method (None = platform
+    default; "spawn" is supported and regression-tested).
     """
     names = tuple(names)
     X = np.atleast_2d(np.asarray(matrix, dtype=float))
@@ -84,21 +84,28 @@ def batch_evaluate(matrix: np.ndarray, names: Sequence[str], *,
         raise ValueError(f"matrix has {X.shape[1]} columns but {len(names)} names")
     base_ps = base or ParamSet.defaults()
     lo, hi = sample_bounds(names)
-    X = np.clip(X, lo, hi)                      # never evaluate outside registered ranges
+    n_clipped = int(((X < lo) | (X > hi)).sum())
+    if n_clipped:
+        import warnings
+        # V1.9-H: the clip itself is correct (never evaluate outside the
+        # registered ranges; records carry the clipped values), but it was
+        # silent. Callers that spray outside the box are told, once per call.
+        warnings.warn(f"batch_evaluate clipped {n_clipped} out-of-range "
+                      f"entries to the registered bounds", UserWarning,
+                      stacklevel=2)
+    X = np.clip(X, lo, hi)
     t0 = time.perf_counter()
     records: list = []
 
     if workers and workers > 1:
         import multiprocessing as mp
-        _WORKER_STATE.update(names=names, level=level, model_form=model_form,
-                             campaign_id=campaign_id, seed=seed)
-        with mp.Pool(processes=int(workers), initializer=_worker_init,
-                     initargs=(level, model_form, campaign_id)) as pool:
-            # the initializer needs the per-task names too; send them explicitly
+        ctx = mp.get_context(mp_context)
+        with ctx.Pool(processes=int(workers), initializer=_worker_init,
+                      initargs=(level, model_form, campaign_id, names, seed,
+                                base_ps.to_dict())) as pool:
             for i, rec in pool.imap(_worker_eval_meta,
                                     [(i, row.tolist()) for i, row in enumerate(X)]):
                 records.append((i, rec))
-                pass
         records = [r for _, r in sorted(records, key=lambda kv: kv[0])]
     else:
         warm_T: Optional[float] = None
@@ -137,7 +144,10 @@ def batch_evaluate(matrix: np.ndarray, names: Sequence[str], *,
 def _worker_eval_meta(task):
     i, values = task
     names = _WORKER_STATE["names"]
-    ps = ParamSet.defaults().with_mapping(dict(zip(names, values)))
+    base_dict = _WORKER_STATE["base_dict"]
+    start = (ParamSet.defaults().with_mapping(base_dict) if base_dict
+             else ParamSet.defaults())
+    ps = start.with_mapping(dict(zip(names, values)))
     rec = evaluate_guarded(ps, level=_WORKER_STATE["level"],
                            model_form=_WORKER_STATE["model_form"],
                            campaign_id=_WORKER_STATE["campaign_id"],
@@ -179,7 +189,23 @@ def _evaluate_warm(ps: ParamSet, level: str, model_form: str, campaign_id: str,
         return _SR(None, bundle, False, time.perf_counter() - t0,
                    level, campaign_id=campaign_id, seed=seed, solver="fast-warm",
                    error=f"{type(exc).__name__}: {exc}")
-    verdict = judge_tandem(res, level=level,
+    # V1.9-H: the warm path judged WITHOUT the optical bundle, so warm
+    # records carried fewer invariant records than the same row evaluated
+    # cold/serially. Mirror evaluate_guarded: optics are lru-cached, the solve
+    # has already paid for them.
+    from ..device.tandem import optics_for
+    from ..validation.guard import judge_optics
+    from ..validation.invariants import InvariantBundle as _B
+    from ..validation.invariants import record as _record2
+    try:
+        optical_bundle = judge_optics(optics_for(ps, model_form=model_form))
+    except Exception as exc:                                   # noqa: BLE001
+        from ..validation.invariants import InvariantGroup as _G, Severity as _S
+        optical_bundle = _B((_record2(
+            "optical.available", _G.OPTICAL.value, False, severity=_S.HARD,
+            message=f"optics could not be evaluated: "
+                    f"{type(exc).__name__}: {exc}"),))
+    verdict = judge_tandem(res, level=level, optical_bundle=optical_bundle,
                            context={"level": level, "model_form": model_form,
                                     "solver": "fast-warm"})
     res.detail["invariants"] = verdict.to_dict()

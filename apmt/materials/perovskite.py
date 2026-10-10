@@ -3,15 +3,19 @@
 The model is deliberately *simple and explicit* so that its assumptions can be
 tested and perturbed rather than hidden:
 
-  absorption coefficient
-      alpha(E) = alpha_peak * [ sqrt(max(E - Eg, 0)/1eV)             (interband)
-                              + sqrt(Eu/1eV) * exp((E - Eg)/Eu) ]    (Urbach)
+  absorption coefficient (piecewise Tauc + Urbach edge)
+      E <= Eg + Eu :  alpha(E) = alpha_peak * sqrt(Eu/1eV) * exp((E-Eg)/Eu) / e
+      E >  Eg + Eu :  alpha(E) = alpha_peak * sqrt((E-Eg)/1eV)
 
-      The square-root interband term is the parabolic-band (Tauc) form; the
-      Urbach term is continuous at Eg (a simple sqrt-only form is not), and it
-      is negligible more than ~5*Eu above the gap.  `alpha_peak` is a
-      registered parameter; the default reproduces the ~1e5 cm^-1
-      above-gap absorption of MAPbI3-type absorbers.
+      The square-root interband term is the parabolic-band (Tauc) form.  The
+      exponential Urbach tail is restricted to the edge region E <= Eg + Eu
+      and the two branches match exactly at E = Eg + Eu (both give
+      alpha_peak*sqrt(Eu/1eV)); an exponential extended above the gap would
+      dominate the interband term and give unphysical coefficients.  V1.9-H
+      repair (U1): the Urbach branch previously missed the 1/e matching
+      factor, so absorption jumped by e ~ 2.718x at the branch edge.
+      `alpha_peak` is a registered parameter; the default reproduces the
+      ~1e5 cm^-1 above-gap absorption of MAPbI3-type absorbers.
 
   refractive index
       Wemple-DiDomenico single oscillator:
@@ -61,7 +65,10 @@ def perovskite_alpha_cm1(eg_ev: float, alpha_peak_cm1: float, urbach_mev: float,
     E = photon_energy_ev(wavelength_nm)
     Eu = max(urbach_mev, 1e-6) * 1e-3
     edge = eg_ev + Eu
-    urbach = np.sqrt(Eu) * np.exp(np.clip((E - eg_ev) / Eu, -700.0, 700.0))
+    # V1.9-H repair (U1): the /e matching factor makes this branch equal
+    # sqrt(Eu) at the edge E = Eg + Eu, exactly where the Tauc branch takes
+    # over with the same value (previously the edge jumped by e ~ 2.718x).
+    urbach = np.sqrt(Eu) * np.exp(np.clip((E - eg_ev) / Eu, -700.0, 700.0)) / np.e
     tauc = np.sqrt(np.maximum(E - eg_ev, 0.0))
     shape = np.where(E <= edge, urbach, tauc)
     alpha = alpha_peak_cm1 * shape
@@ -99,5 +106,5 @@ def perovskite_bandgap_temperature(eg_at_reference_ev: float, temperature_k: flo
 
 
 def urbach_absorption_edge_nm(eg_ev: float) -> float:
-    """Wavelength [nm] of the band edge (alpha = Eg)."""
+    """Wavelength [nm] of the band edge (photon energy E = Eg)."""
     return float(H_J_S * C_M_S / (eg_ev * Q_C) * 1e9)

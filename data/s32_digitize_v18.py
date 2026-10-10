@@ -63,7 +63,10 @@ import os
 import sys
 import numpy as np
 from PIL import Image
-import pymupdf
+# NOTE (V1.9-H, S32-CI): pymupdf is imported inside _run_m2 only. It is an
+# optional extra (pip install apmt-solar[digitization]) needed solely for the
+# M2 PDF re-render; a module-top import broke the M1/M3/sahli re-run and the
+# CI determinism check in environments without the extra.
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -357,6 +360,13 @@ def _run_m2(run):
     Requires the external manuscript PDF (not committed). The mask/scale numbers
     are frozen from V1.8 cycle 2 and are deliberately not re-tuned here.
     """
+    try:
+        import pymupdf
+    except ImportError as exc:
+        raise SourceUnavailable(
+            "M2 needs the optional 'digitization' extra "
+            "(pip install apmt-solar[digitization]); pymupdf is not installed "
+            "in this environment") from exc
     page = pymupdf.open(PDF)[54]
     rect = pymupdf.Rect(144.4, 388.5, 451.0, 623.0)
     S = 200 / 72.0

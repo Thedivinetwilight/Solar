@@ -83,7 +83,11 @@ def test_batch_order_is_preserved():
     # the bandgap response is non-monotone (interior optimum), so an order bug
     # would be visible even without inspecting the ids
     pces = [r.result.pce_pct for r in recs]
-    assert max(pces) == pces[2]           # 1.70 eV is near the current-matching optimum
+    # V1.9-H: current-matching optimum moved 1.70 -> ~1.60 eV (U1 lowers top
+    # current at fixed Eg; R1 reshapes Voc(Eg)), so on this coarse grid the max
+    # sits at 1.55 eV (index 1). Still interior, so the order tripwire (an order
+    # bug would surface the max at an endpoint) keeps working.
+    assert max(pces) == pces[1]
 
 
 def test_campaign_artifact_is_reproducible_and_carries_metadata():
@@ -130,3 +134,61 @@ def test_reference_first_row_of_the_batch_is_not_warm_started():
     assert recs[1].solver == "fast-warm"
     # and the warm-started result agrees with the cold one (same physics)
     assert recs[0].result.pce_pct == pytest.approx(recs[1].result.pce_pct, abs=1e-3)
+
+
+def test_batch_workers_run_under_spawn_and_match_serial():
+    """V1.9-H: workers>1 must work under the spawn start method (macOS/Windows
+    default), not just fork. Pre-fix the children raised KeyError('names')."""
+    names = ("perovskite_eg_ev", "rsh_ohm_cm2")
+    X = np.array([[1.60, 3000.0], [1.70, 2500.0]])
+    recs_p, _ = batch_evaluate(X, names, level="L2", campaign_id="spawn",
+                               workers=2, mp_context="spawn", warm_start=False)
+    recs_s, _ = batch_evaluate(X, names, level="L2", campaign_id="serial",
+                               warm_start=False)
+    assert [r.parameter_values["perovskite_eg_ev"] for r in recs_p] == [1.60, 1.70]
+    for rp, rs in zip(recs_p, recs_s):
+        assert rp.valid == rs.valid
+        if rp.valid:
+            assert rp.result.pce_pct == pytest.approx(rs.result.pce_pct, rel=1e-9)
+
+
+def test_batch_workers_honor_a_non_default_base():
+    """V1.9-H: the worker path ignored `base` (always rebuilt from registry
+    defaults), silently diverging from the serial path."""
+    base = ParamSet.defaults().with_mapping({"rsh_ohm_cm2": 600.0})
+    names = ("perovskite_eg_ev",)
+    X = np.array([[1.60], [1.70]])
+    recs_p, _ = batch_evaluate(X, names, level="L2", campaign_id="base",
+                               base=base, workers=2, warm_start=False)
+    recs_s, _ = batch_evaluate(X, names, level="L2", campaign_id="base-s",
+                               base=base, warm_start=False)
+    for rp, rs in zip(recs_p, recs_s):
+        assert rp.parameter_values["rsh_ohm_cm2"] == pytest.approx(600.0)
+        assert rp.result.pce_pct == pytest.approx(rs.result.pce_pct, rel=1e-9)
+
+
+def test_batch_warm_and_cold_carry_the_same_verdict_records():
+    """V1.9-H: the warm path judged WITHOUT the optical bundle, so warm
+    records carried fewer invariant records than the same row cold."""
+    names = ("rsh_ohm_cm2",)
+    X = np.array([[600.0], [600.0]])
+    recs, _ = batch_evaluate(X, names, level="L4", campaign_id="verdict", seed=5)
+    assert recs[1].solver == "fast-warm"
+    cold = [r.name for r in recs[0].verdict.records]
+    warm = [r.name for r in recs[1].verdict.records]
+    assert warm == cold
+    assert any(n.startswith("optical.") for n in warm)
+
+
+def test_batch_clip_warns_but_stays_self_consistent():
+    """V1.9-H: out-of-range entries are still clipped (never evaluated
+    outside the registered ranges), but the caller is now told."""
+    names = ("perovskite_eg_ev",)
+    from apmt.params.registry import sample_bounds
+    lo_v = float(sample_bounds(names)[0][0])
+    hi_v = float(sample_bounds(names)[1][0])
+    X = np.array([[lo_v - 10.0], [hi_v + 10.0]])
+    with pytest.warns(UserWarning, match="clipped"):
+        recs, _ = batch_evaluate(X, names, level="L2", campaign_id="clip-warn")
+    got = [r.parameter_values["perovskite_eg_ev"] for r in recs]
+    assert got == [lo_v, hi_v]

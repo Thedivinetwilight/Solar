@@ -63,29 +63,38 @@ def test_tandem_baseline_regression_pin():
       heat" rule to an energy balance (conduction + radiative cooling to
       ambient); dT 30.0 -> 12.6 K. This is a physics change, documented in the
       V1.9-C report section, not a tolerance relaxation.
+    * 2026-10-10 V1.9-H   PCE 20.2417 -> 24.9007, Voc 1.5130 -> 1.8669
+      (+0.354 V = 2 cells x kT*ln(1000), exactly the R1 signature: J0_rad was
+      1000x too large). Jsc 15.7266 -> 15.4228 (U1 removed the spurious e-fold
+      absorption hump at the perovskite edge; the bottom gains the transmitted
+      light, 19.8030 -> 20.0932). dT 12.59 -> 11.33 K (higher P_elec leaves
+      less heat). The jsc_bias_sensitivity pin (393.2) is REPLACED by NaN +
+      bracketed=False (J-sens: the old value was a bisection-midpoint
+      artifact, j_hi/0.04). Historical values preserved in git + report.
     """
     ps = ParamSet.defaults()
     # (a) fixed-temperature diagnostic (no self-heating)
     o = evaluate_tandem(ps, self_heating=False)
-    assert o.pce_pct == pytest.approx(20.2417, abs=0.002)
-    assert o.jsc_ma_cm2 == pytest.approx(15.7266, abs=0.002)
-    assert o.voc_v == pytest.approx(1.5130, abs=0.001)
-    assert o.ff == pytest.approx(0.8507, abs=0.002)
-    assert o.j_top_sc == pytest.approx(15.7266, abs=0.002)
-    assert o.j_bottom_sc == pytest.approx(19.8030, abs=0.002)
+    assert o.pce_pct == pytest.approx(24.9007, abs=0.002)
+    assert o.jsc_ma_cm2 == pytest.approx(15.4228, abs=0.002)
+    assert o.voc_v == pytest.approx(1.8669, abs=0.001)
+    assert o.ff == pytest.approx(0.8648, abs=0.002)
+    assert o.j_top_sc == pytest.approx(15.4228, abs=0.002)
+    assert o.j_bottom_sc == pytest.approx(20.0932, abs=0.002)
     assert o.coupling_converged
-    # the conditioning diagnostic: the tandem J(V) curve loses ~393 mA/cm^2 per
-    # volt of forward bias just above short circuit, i.e. a 20 mV bias error
-    # would move the "current at V = 0" by ~7.9 mA/cm^2 -- which is why Jsc is
-    # defined as the current-source limit and not read off the curve
-    assert o.detail["jsc_bias_sensitivity_ma_cm2_per_v"] == pytest.approx(393.2, rel=0.02)
-    assert o.detail["jsc_curve_grid_endpoint_ma_cm2"] == pytest.approx(15.7266, abs=0.002)
+    # J-sens (V1.9-H): the old 393.2 pin was the midpoint artifact j_hi/0.04.
+    # The twin is current-mismatched so V(J) never reaches the 20 mV probe;
+    # the diagnostic is honestly NaN (finite-slope branch unit-tested in
+    # test_v19h_physics_repairs.py). Jsc stays the current-source limit.
+    assert o.detail["jsc_bias_sensitivity_bracketed"] is False
+    assert np.isnan(o.detail["jsc_bias_sensitivity_ma_cm2_per_v"])
+    assert o.detail["jsc_curve_grid_endpoint_ma_cm2"] == pytest.approx(15.4228, abs=0.002)
     # (b) the default configuration includes one-sun self-heating
     hot = evaluate_tandem(ps)
     th = hot.detail["thermal"]
     assert th["model"] == "energy_balance"
-    assert th["delta_t_k"] == pytest.approx(12.59, abs=0.02)
-    assert hot.pce_pct == pytest.approx(19.2633, abs=0.002)
+    assert th["delta_t_k"] == pytest.approx(11.33, abs=0.02)
+    assert hot.pce_pct == pytest.approx(24.2348, abs=0.002)
     assert hot.pce_pct < o.pce_pct     # heating can only cost efficiency
     assert abs(th["residual_mw_cm2"]) < 1e-3      # the balance must close
 
@@ -97,14 +106,20 @@ def test_thermal_mechanism_is_wired_and_directional():
     V1.9-C pin move: the numbers below are those of the energy-balance closure
     (conduction + radiative cooling), not the legacy all-incident-power rule, so
     they are smaller than the V1.9-B values (12.0 -> 5.48 K for gain 0.6,
-    15.0 -> 3.68 K for heat fraction 0.5)."""
+    15.0 -> 3.68 K for heat fraction 0.5).
+
+    V1.9-H pin move: gain-0.6 dT 5.48 -> 4.94 K (R1/T21 raise P_elec, leaving
+    less heat); heat-fraction-0.5 dT 3.68 -> 5.64 K. The latter move is the
+    F-heat repair signature: heat is now f*(absorbed - extracted), so f = 0.5
+    gives almost exactly half the base rise (5.64 vs 11.33 K); the old form
+    subtracted the full extracted power and gave 0.29x (3.68 vs 12.59 K)."""
     ps = ParamSet.defaults()
     base = evaluate_tandem(ps)
     cooled = evaluate_tandem(ps.with_mapping({"thermal_management_gain": 0.6}))
-    assert cooled.detail["thermal"]["delta_t_k"] == pytest.approx(5.48, abs=0.02)
+    assert cooled.detail["thermal"]["delta_t_k"] == pytest.approx(4.94, abs=0.02)
     assert cooled.pce_pct > base.pce_pct
     half_heat = evaluate_tandem(ps.with_mapping({"absorption_heat_fraction": 0.5}))
-    assert half_heat.detail["thermal"]["delta_t_k"] == pytest.approx(3.68, abs=0.02)
+    assert half_heat.detail["thermal"]["delta_t_k"] == pytest.approx(5.64, abs=0.02)
     assert half_heat.pce_pct > base.pce_pct
 
 
@@ -117,7 +132,9 @@ def test_luminescent_coupling_is_bounded_and_directionally_honest():
         {"luminescent_coupling_top_to_bottom": 0.5}), self_heating=False)
     assert abs(coupled.pce_pct - base.pce_pct) < 0.1
     assert base.current_matching_ratio > 1.0      # bottom has the surplus
-    assert coupled.pce_pct < 25.0                 # no runaway: fail loudly if it returns
+    # V1.9-H: tripwire moved 25.0 -> 30.0 because the nominal moved 20.24 ->
+    # 24.90 (margin was 0.1 pp); 30.0 still detects the 141 % bug class loudly
+    assert coupled.pce_pct < 30.0                 # no runaway: fail loudly if it returns
 
 
 def test_rsh_is_not_inert_in_the_tandem_solve():
@@ -151,6 +168,24 @@ def test_detailed_balance_known_answers():
     assert r.voc_v == pytest.approx(1.082, abs=0.002)
     assert r.ff == pytest.approx(0.889, abs=0.003)
     assert r.pce_pct == pytest.approx(33.68, abs=0.05)
+    # V1.9-H: the module docstring's known-answer claims, made real (they were
+    # previously attributed to a test file that does not exist).
+    from apmt.core.constants import Q_C
+    from apmt.device.detailed_balance import sq_optimum
+    from apmt.spectra.reference import reference
+    opt = sq_optimum()
+    assert 1.25 < opt.eg_ev < 1.45
+    assert 32.5 < opt.pce_pct < 34.5
+    assert (detailed_balance_single_junction(opt.eg_ev - 0.2).pce_pct
+            < opt.pce_pct)
+    assert (detailed_balance_single_junction(opt.eg_ev + 0.2).pce_pct
+            < opt.pce_pct)
+    sp = reference()
+    assert r.jsc_ma_cm2 == pytest.approx(
+        0.1 * Q_C * sp.above_gap_photon_flux(1.34), rel=1e-9)
+    assert r.voc_v < 1.34
+    hot = detailed_balance_single_junction(1.34, temperature_k=350.0)
+    assert hot.voc_v < r.voc_v
 
 
 def test_invariants_fail_loudly():

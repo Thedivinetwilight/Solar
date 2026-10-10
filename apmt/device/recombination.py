@@ -9,9 +9,10 @@ radiative  J0_rad
     where the external radiative efficiency ERE = fraction of radiative
     recombination that escapes the device. ERE = 1 gives the radiative limit;
     the perovskite representative device (PLQY 0.02%, Fig. 5 of the source)
-    sets ERE = 2e-4 for that device class. ERE is a registered parameter with
-    EXPLORATORY range classification, because the champion's ERE is not
-    published.
+    has ERE = 2e-4, the low end for that device class. ERE is a registered
+    parameter with EXPLORATORY range classification (registry default 0.02,
+    a mid-range MODEL_ASSUMED value, because the champion's ERE is not
+    published -- V1.9-H wording fix; no value changed).
 
 nonradiative  J0_SRH
     From Shockley-Read-Hall recombination in a slab of thickness W with
@@ -72,6 +73,11 @@ def radiative_j0_ma_cm2(eg_ev: float, temperature_k: float,
     J0_rad = q * Phi_emit(V = 0) with emission into one hemisphere, times the
     fraction of the hemisphere the cell can actually emit into (1.0 for a bare
     cell; a fraction < 1 models external confinement, which lowers J0_rad).
+
+    V1.9-H repair (R1): an earlier revision carried an extra ``* 1e3`` here even
+    though ``0.1 * Q_C`` already converts q*flux [A/m^2] to [mA/cm^2], so every
+    radiative saturation current was inflated 1000x. The conversion is now the
+    single standard factor.
     """
     from .detailed_balance import blackbody_photon_flux_hemisphere
     from ..core.numerics import trapz
@@ -79,7 +85,7 @@ def radiative_j0_ma_cm2(eg_ev: float, temperature_k: float,
     E = np.linspace(e_lo, max(e_max_ev, e_lo + 1.0), n_points)
     flux = blackbody_photon_flux_hemisphere(E, temperature_k, 0.0)
     ph = trapz(flux, E) * emissive_solid_angle_fraction
-    return 0.1 * Q_C * ph * 1e3   # A/m2 -> mA/cm2  (0.1 * Q_C already is mA/cm2)
+    return 0.1 * Q_C * ph   # q*flux [A/m2] x0.1 -> [mA/cm2]
 
 
 def j0_from_ere(eg_ev: float, temperature_k: float, ere: float) -> float:

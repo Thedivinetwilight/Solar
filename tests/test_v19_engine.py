@@ -188,11 +188,14 @@ def test_jsc_definition_and_conditioning_diagnostic():
     """Jsc is the current-source limit; the curve sensitivity documents why."""
     res = evaluate_tandem(ParamSet.defaults(), self_heating=False)
     assert res.jsc_ma_cm2 == pytest.approx(min(res.j_top_sc, res.j_bottom_sc), abs=1e-12)
-    assert res.detail["jsc_bias_sensitivity_ma_cm2_per_v"] > 50.0
     assert "current-source limit" in res.detail["jsc_definition"]
-    # a 20 mV bias error would move the curve-based current by ~8 mA/cm2
-    lost = res.detail["jsc_bias_sensitivity_ma_cm2_per_v"] * 0.020
-    assert 3.0 < lost < 20.0
+    # V1.9-H (J-sens): the twin is current-mismatched, so V(J) never reaches
+    # the 20 mV probe bias (the bottom cell still holds ~0.5 V when the top
+    # hits Jsc) and the slope is honestly NaN, not the old midpoint artifact
+    # (j_hi/0.04 = 385.6, preserved in git history). The finite-slope branch
+    # is unit-tested on synthetic curves in test_v19h_physics_repairs.py.
+    assert res.detail["jsc_bias_sensitivity_bracketed"] is False
+    assert np.isnan(res.detail["jsc_bias_sensitivity_ma_cm2_per_v"])
 
 
 def test_solver_auto_selects_the_fast_path():
@@ -223,7 +226,7 @@ def test_pce_is_a_percentage_at_every_concentration():
         rows.append(r.pce_pct)
     # the 1-sun value is untouched by the fix (this is why no pinned 1-sun number
     # changed) and the concentration response is weak and physical
-    assert rows[2] == pytest.approx(20.2417, abs=0.002)
+    assert rows[2] == pytest.approx(24.9007, abs=0.002)  # V1.9-H: R1 (J0_rad/1000)
     assert rows[3] > rows[2]                   # small concentration gain
     assert all(abs(p - rows[2]) < 2.0 for p in rows[1:])   # >=0.5 sun: flat
     # ... and at 0.1 sun the efficiency falls by ~6 pp because the shunt and the
