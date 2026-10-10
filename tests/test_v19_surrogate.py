@@ -48,6 +48,7 @@ from apmt.surrogate.models import (
     fit_regressor,
     grouped_kfold_indices,
     interval_metrics,
+    minimum_calibration_samples,
     regression_metrics,
     select_family,
 )
@@ -206,18 +207,56 @@ def test_atomic_dataset_storage_separates_valid_rows_from_rejection_ledger(tmp_p
     assert hashlib.sha256(D_ARTIFACT.read_bytes()).hexdigest() == historical
 
 
+def test_dataset_save_rejects_invalid_statuses_outputs_and_partition_mismatch(tmp_path):
+    good = _data_row(role="TRAIN")
+    invalid = _data_row(valid=False, role="TRAIN", campaign="invalid-save")
+    invalid_with_labels = copy.deepcopy(invalid)
+    invalid_with_labels["outputs"] = {"pce_pct": 1.0}
+    with pytest.raises(ValueError, match="INVALID_PHYSICS"):
+        save_dataset(tmp_path / "invalid.json.gz", [good, invalid_with_labels], metadata={})
+    unknown = copy.deepcopy(good)
+    unknown["status"] = "UNRECOGNIZED_STATUS"
+    with pytest.raises(ValueError, match="unknown sample statuses"):
+        save_dataset(tmp_path / "unknown.json.gz", [unknown], metadata={})
+
+    target = tmp_path / "partition.json.gz"
+    save_dataset(target, [good, invalid], metadata={})
+    import gzip
+    with gzip.open(target, "rt", encoding="utf-8") as f:
+        artifact = json.load(f)
+    artifact["rejection_ledger"].append(artifact["valid_records"].pop())
+    with gzip.open(target, "wt", encoding="utf-8") as f:
+        json.dump(artifact, f)
+    with pytest.raises(ValueError, match="rejection_ledger"):
+        load_dataset(target)
+
+    malformed = tmp_path / "malformed-row.json.gz"
+    save_dataset(malformed, [good], metadata={})
+    with gzip.open(malformed, "rt", encoding="utf-8") as f:
+        artifact = json.load(f)
+    artifact["valid_records"].append(7)
+    with gzip.open(malformed, "wt", encoding="utf-8") as f:
+        json.dump(artifact, f)
+    with pytest.raises(ValueError, match="only objects"):
+        load_dataset(malformed)
+
+
 def test_model_family_comparison_uses_validation_and_returns_finite_predictions():
     xtr = unit_lhs(72, 2, 13)
     xv = unit_lhs(32, 2, 14)
     f = lambda x: 1.0 + 2.0 * x[:, 0] - 0.7 * x[:, 1] + 0.3 * x[:, 0] * x[:, 1]
     models, scores = compare_families(xtr, f(xtr), xv, f(xv),
         feature_names=("x1", "x2"), target_name="y", unit="1",
-        training_fingerprint="training-fingerprint", seed=5)
+        training_fingerprint="training-fingerprint", seed=5,
+        feature_low=(0.0, 0.0), feature_high=(1.0, 1.0))
     assert set(models) == set(MODEL_FAMILIES)
     assert set(scores) == set(MODEL_FAMILIES)
     assert all(np.isfinite(v["rmse"]) for v in scores.values())
     assert select_family(scores) in MODEL_FAMILIES
     for model in models.values():
+        assert model.feature_transform == "verified_box_linear_v1"
+        assert model.feature_low == (0.0, 0.0)
+        assert model.feature_high == (1.0, 1.0)
         pred, std = model.predict(xv[:3], return_std=True)
         assert pred.shape == (3,) and np.isfinite(pred).all()
         if std is not None:
@@ -238,6 +277,34 @@ def test_model_rejects_nonfinite_and_missing_features_and_reports_metrics():
     assert {"rmse", "mae", "max_absolute_error", "bias",
             "normalized_rmse_train_sd", "relative_error_median_pct"} <= set(m)
     assert m["max_absolute_error"] >= m["mae"]
+
+
+def test_feature_transform_is_stored_applied_and_training_only_when_unbounded():
+    unit = unit_lhs(32, 2, 151)
+    low = np.array([-2.0e6, 0.02])
+    high = np.array([3.0e6, 0.08])
+    X = low + unit * (high - low)
+    y = 2.0 * unit[:, 0] - 0.5 * unit[:, 1]
+    model = fit_regressor("ridge", X, y, feature_names=("wide", "small"),
+                          target_name="target", unit="1", training_fingerprint="scaled",
+                          feature_low=low, feature_high=high)
+    X_probe = np.array([[0.4e6, 0.05]])
+    expected_x = (X_probe - low) / (high - low)
+    expected = model.estimator.predict(expected_x)
+    pred, _ = model.predict(X_probe, return_std=False)
+    assert model.feature_transform == "verified_box_linear_v1"
+    assert np.allclose(pred, expected)
+    with pytest.raises(ValueError, match="outside the supplied verified box"):
+        fit_regressor("ridge", np.vstack([X, [high[0] + 1.0, high[1]]]),
+                      np.r_[y, 0.0], feature_names=("wide", "small"),
+                      target_name="target", unit="1", training_fingerprint="bad",
+                      feature_low=low, feature_high=high)
+
+    training_only = fit_regressor("ridge", X, y, feature_names=("wide", "small"),
+                                  target_name="target", unit="1", training_fingerprint="fold")
+    assert training_only.feature_transform == "training_minmax_linear_v1"
+    assert np.allclose(training_only.feature_low, np.min(X, axis=0))
+    assert np.allclose(training_only.feature_high, np.max(X, axis=0))
 
 
 def test_campaign_uses_disjoint_calibration_and_grouped_cv_pooling():
@@ -280,6 +347,13 @@ def test_campaign_uses_disjoint_calibration_and_grouped_cv_pooling():
     assert model.conformal_radius == pytest.approx(expected_calibration_q)
     assert model.conformal_radius > selection_residual_q
 
+    uncalibrated, _, _, short_calibration = _single_model_set(
+        train_rows_=train, validation_rows=validation, calibration_rows=calibration[:8],
+        feature_names=("x", "y"), target="pce_pct", seed=557,
+        training_fp=dataset_fingerprint(train), families=("ridge",))
+    assert uncalibrated.conformal_radius is None
+    assert short_calibration["calibration_status"] == "NOT_CALIBRATED"
+
     cv = _grouped_cv(train, ("x", "y"), "ridge", "pce_pct", 555,
                      np.zeros(2), np.ones(2))
     assert cv["status"] == "MEASURED_GROUPED_DESIGN_FAMILY_CV"
@@ -309,6 +383,21 @@ def test_split_conformal_is_finite_sample_and_coverage_is_measured():
     assert metric["nominal_coverage"] == 0.9
     assert 0 <= metric["empirical_coverage"] <= 1
     assert metric["mean_interval_width"] == pytest.approx(2 * radius)
+
+
+def test_split_conformal_rejects_impossible_finite_sample_quantiles():
+    assert minimum_calibration_samples(0.90) == 9
+    assert minimum_calibration_samples(0.95) == 19
+    with pytest.raises(ValueError, match="at least 9 calibration points"):
+        conformal_radius(np.arange(8.0), np.zeros(8), coverage=0.90)
+    residuals = np.arange(1.0, 10.0)
+    assert conformal_radius(residuals, np.zeros(9), coverage=0.90) == pytest.approx(9.0)
+    with pytest.raises(ValueError, match="shapes must match"):
+        conformal_radius(np.arange(9.0), np.zeros(8), coverage=0.90)
+    with pytest.raises(ValueError, match="finite vector"):
+        conformal_radius(np.r_[np.arange(8.0), np.nan], np.zeros(9), coverage=0.90)
+    with pytest.raises(ValueError, match="strictly between"):
+        conformal_radius(np.arange(10.0), np.zeros(10), coverage=1.0)
 
 
 def test_grouped_splits_never_divide_a_design_family_and_are_reproducible():
@@ -411,6 +500,14 @@ def test_prediction_api_fails_closed_on_missing_features_unknown_regime_and_unmo
     assert bundle.predict({"perovskite_eg_ev": x["perovskite_eg_ev"]},
                           regime="nominal_1sun_25c")["status"] == INVALID_INPUT
     assert bundle.predict(x, regime="new-regime")["status"] == MODEL_UNAVAILABLE
+    typo = dict(x, perovskite_thickness_nmm=500.0)
+    assert bundle.predict(typo, regime="nominal_1sun_25c")["status"] == INVALID_INPUT
+    mixed_keys = dict(x)
+    mixed_keys["unexpected"] = 1.0
+    mixed_keys[7] = 1.0
+    assert bundle.predict(mixed_keys, regime="nominal_1sun_25c")["status"] == INVALID_INPUT
+    wrong_illumination = dict(x, irradiance_suns=3.0)
+    assert bundle.predict(wrong_illumination, regime="nominal_1sun_25c")["status"] == MODEL_UNAVAILABLE
     changed = dict(x, perovskite_absorption_alpha_ev=5.1e4)
     out = bundle.predict(changed, regime="nominal_1sun_25c")
     assert out["status"] == MODEL_UNAVAILABLE
@@ -433,6 +530,29 @@ def test_high_fidelity_verification_runs_l4_and_l5_but_respects_uncertain_suppor
     # rsh is close to the shared box boundary, so support is explicitly
     # uncertain.  Even a valid L4/L5 result cannot waive that OOD safeguard.
     assert result["prediction"]["status"] == IN_DOMAIN_UNCERTAIN
+    assert result["candidate_eligible_for_optimizer"] is False
+
+
+def test_candidate_l5_crosscheck_fails_closed_without_calibrated_targets(monkeypatch, tmp_path):
+    from apmt.validation import guard
+
+    bundle, x, _ = _small_bundle(tmp_path)
+
+    def fake_evaluate(ps, *, level, model_form, campaign_id, seed):
+        missing = ("pce_pct",) if level == "L5" else ()
+        return _fake_record(valid=True, params=ps.to_dict(), campaign=campaign_id,
+                            level=level, missing=missing)
+
+    monkeypatch.setattr(guard, "evaluate_guarded", fake_evaluate)
+    bundle.validation_l5_tolerance = {"nominal_1sun_25c": {"pce_pct": 100.0}}
+    result = bundle.verify_candidate(x, regime="nominal_1sun_25c", run_l5=True)
+    assert result["l5"]["within_campaign_calibrated_tolerance"] == {"pce_pct": False}
+    assert result["l5"]["delta_l5_minus_l4"]["pce_pct"] is None
+    assert result["candidate_eligible_for_optimizer"] is False
+
+    bundle.validation_l5_tolerance = {"nominal_1sun_25c": {}}
+    result = bundle.verify_candidate(x, regime="nominal_1sun_25c", run_l5=True)
+    assert result["l5"]["within_campaign_calibrated_tolerance"] == {"pce_pct": False}
     assert result["candidate_eligible_for_optimizer"] is False
 
 

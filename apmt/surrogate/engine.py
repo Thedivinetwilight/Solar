@@ -14,7 +14,7 @@ from .domain import (IN_DOMAIN_UNCERTAIN, IN_DOMAIN_VALIDATED, INVALID_INPUT,
                      MODEL_UNAVAILABLE, OUT_OF_DOMAIN, SupportProfile)
 from .models import FittedRegressor
 
-ENGINE_VERSION = "v19e-surrogate-engine/1.0"
+ENGINE_VERSION = "v19e-surrogate-engine/1.1"
 
 
 def _fingerprint_json(value: Any) -> str:
@@ -63,6 +63,14 @@ class SurrogateBundle:
         if not isinstance(parameters, Mapping):
             return {"status": INVALID_INPUT, "reason": "parameters must be a mapping",
                     "predictions": {}, "model_version": self.version}
+        accepted_names = (set(self.feature_names) | set(self.fixed_parameter_names)
+                          | {"irradiance_suns", "temperature_k"})
+        unknown = sorted(repr(name) for name in parameters
+                         if not isinstance(name, str) or name not in accepted_names)
+        if unknown:
+            return {"status": INVALID_INPUT,
+                    "reason": f"unknown parameter names: {unknown}",
+                    "predictions": {}, "model_version": self.version}
         missing = [n for n in self.feature_names if n not in parameters]
         if missing:
             return {"status": INVALID_INPUT, "reason": f"missing features: {missing}",
@@ -75,6 +83,22 @@ class SurrogateBundle:
         if not np.all(np.isfinite(x)):
             return {"status": INVALID_INPUT, "reason": "features must be finite",
                     "predictions": {}, "model_version": self.version}
+        for name in ("irradiance_suns", "temperature_k"):
+            if name not in parameters:
+                continue
+            expected = self.regimes[regime].get(name)
+            try:
+                value = float(parameters[name])
+            except (ValueError, TypeError, OverflowError):
+                return {"status": INVALID_INPUT, "reason": f"{name} must be numeric",
+                        "predictions": {}, "model_version": self.version}
+            if not np.isfinite(value):
+                return {"status": INVALID_INPUT, "reason": f"{name} must be finite",
+                        "predictions": {}, "model_version": self.version}
+            if expected is None or not np.isclose(value, float(expected), rtol=1e-12, atol=1e-12):
+                return {"status": MODEL_UNAVAILABLE,
+                        "reason": f"{name}={value:g} does not match the trained regime value {expected!r}",
+                        "predictions": {}, "model_version": self.version}
         changed_unmodeled = []
         for name in self.fixed_parameter_names:
             if name in parameters:
@@ -205,16 +229,19 @@ class SurrogateBundle:
         l4_rec = evaluate_guarded(ps, level="L4", model_form="IQE-M1",
                                   campaign_id=campaign_id, seed=0)
         l4 = _record_summary(l4_rec)
+        predicted_outputs = prediction.get("predictions", {})
         discrepancies: dict[str, float] = {}
-        within_intervals = True
+        within_intervals = bool(predicted_outputs)
         if l4_rec.valid and l4_rec.result is not None:
             actual = _result_outputs(l4_rec.result)
-            for name, entry in prediction.get("predictions", {}).items():
-                if name not in actual or actual[name] is None:
+            for name, entry in predicted_outputs.items():
+                observed = actual.get(name)
+                if observed is None:
+                    within_intervals = False
                     continue
-                discrepancies[name] = float(entry["prediction"] - actual[name])
+                discrepancies[name] = float(entry["prediction"] - observed)
                 interval = entry.get("conformal_interval")
-                if interval is None or not (interval[0] <= actual[name] <= interval[1]):
+                if interval is None or not (interval[0] <= observed <= interval[1]):
                     within_intervals = False
         else:
             actual = {}
@@ -228,14 +255,26 @@ class SurrogateBundle:
             l5_ok = bool(l5_rec.valid and l5_rec.result is not None)
             if l5_ok:
                 l5_outputs = _result_outputs(l5_rec.result)
-                l5_summary["delta_l5_minus_l4"] = {
-                    k: float(l5_outputs[k] - actual[k]) for k in actual
-                    if k in l5_outputs and actual[k] is not None and l5_outputs[k] is not None}
                 tolerance_map = self.validation_l5_tolerance.get(regime, {})
-                checks = {k: abs(v) <= tolerance_map.get(k, float("inf"))
-                          for k, v in l5_summary["delta_l5_minus_l4"].items()}
+                deltas, checks = {}, {}
+                for name in predicted_outputs:
+                    l4_value, l5_value = actual.get(name), l5_outputs.get(name)
+                    tolerance = tolerance_map.get(name)
+                    try:
+                        tolerance = float(tolerance)
+                    except (TypeError, ValueError, OverflowError):
+                        tolerance = float("nan")
+                    if (l4_value is None or l5_value is None
+                            or not np.isfinite(tolerance) or tolerance < 0):
+                        deltas[name] = None
+                        checks[name] = False
+                        continue
+                    delta = float(l5_value - l4_value)
+                    deltas[name] = delta
+                    checks[name] = abs(delta) <= tolerance
+                l5_summary["delta_l5_minus_l4"] = deltas
                 l5_summary["within_campaign_calibrated_tolerance"] = checks
-                l5_ok = l5_ok and all(checks.values())
+                l5_ok = l5_ok and bool(checks) and all(checks.values())
         support_ok = status == IN_DOMAIN_VALIDATED
         l4_ok = bool(l4_rec.valid and inside)
         ready = bool(support_ok and l4_ok and within_intervals and l5_ok)

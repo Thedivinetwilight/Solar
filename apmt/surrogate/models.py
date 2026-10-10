@@ -73,8 +73,8 @@ def _estimator(family: str, n_features: int, seed: int):
                                              l2_regularization=1.0,
                                              random_state=int(seed))
     if family == "gaussian_process_matern":
-        # Features are normalized to the verified box before this is constructed;
-        # the trainable ARD length-scales and amplitude are fit from training data.
+        # FittedRegressor applies and stores its linear feature transform before
+        # estimator fit/predict; campaign fits use the predeclared verified box.
         kernel = (ConstantKernel(1.0, (1e-2, 1e2))
                   * Matern(length_scale=np.full(n_features, 0.25),
                            length_scale_bounds=(0.025, 4.0), nu=2.5)
@@ -97,15 +97,18 @@ class FittedRegressor:
     n_training: int
     training_runtime_s: float
     target_scale: float
-    model_version: str = "v19e-surrogate-model/1"
+    model_version: str = "v19e-surrogate-model/3"
     conformal_radius: float | None = None
     conformal_coverage: float = 0.90
     validation_metrics: dict | None = None
     raw_uncertainty_note: str = "NOT_CALIBRATED"
     calibration_fingerprint: str | None = None
     calibration_points: int = 0
+    feature_low: tuple[float, ...] = ()
+    feature_high: tuple[float, ...] = ()
+    feature_transform: str = "training_minmax_linear_v1"
 
-    def predict(self, X: np.ndarray, return_std: bool = True) -> tuple[np.ndarray, np.ndarray | None]:
+    def _transform(self, X: np.ndarray) -> np.ndarray:
         x = np.asarray(X, dtype=float)
         if x.ndim == 1:
             x = x.reshape(1, -1)
@@ -113,36 +116,96 @@ class FittedRegressor:
             raise ValueError(f"expected n x {len(self.feature_names)} features; got {x.shape}")
         if not np.all(np.isfinite(x)):
             raise ValueError("prediction inputs must be finite")
+        if self.feature_transform not in ("verified_box_linear_v1", "training_minmax_linear_v1"):
+            raise ValueError(f"unsupported serialized feature transform {self.feature_transform!r}")
+        low = np.asarray(self.feature_low, dtype=float)
+        high = np.asarray(self.feature_high, dtype=float)
+        if low.shape != (len(self.feature_names),) or high.shape != low.shape:
+            raise ValueError("serialized model feature-transform metadata is incomplete")
+        span = high - low
+        if not np.all(np.isfinite(low)) or not np.all(np.isfinite(high)) or np.any(span <= 0):
+            raise ValueError("serialized model feature-transform bounds are invalid")
+        transformed = (x - low) / span
+        if not np.all(np.isfinite(transformed)):
+            raise ValueError("transformed prediction inputs must be finite")
+        return transformed
+
+    def predict(self, X: np.ndarray, return_std: bool = True) -> tuple[np.ndarray, np.ndarray | None]:
+        x = self._transform(X)
         if self.family == "gaussian_process_matern" and return_std:
             mu, sigma = self.estimator.predict(x, return_std=True)
-            return np.asarray(mu, float).reshape(-1), np.asarray(sigma, float).reshape(-1)
+            mean = np.asarray(mu, float).reshape(-1)
+            std = np.asarray(sigma, float).reshape(-1)
+            if not np.all(np.isfinite(mean)) or not np.all(np.isfinite(std)) or np.any(std < 0):
+                raise ValueError("model returned non-finite predictions or invalid predictive spread")
+            return mean, std
         mu = np.asarray(self.estimator.predict(x), float).reshape(-1)
+        if not np.all(np.isfinite(mu)):
+            raise ValueError("model returned non-finite predictions")
         if self.family == "extra_trees" and return_std:
             # Tree spread is a disagreement diagnostic, not a calibrated posterior.
             tree_y = np.stack([t.predict(x) for t in self.estimator.estimators_], axis=0)
-            return mu, np.std(tree_y, axis=0, ddof=1)
+            std = np.std(tree_y, axis=0, ddof=1)
+            if not np.all(np.isfinite(std)) or np.any(std < 0):
+                raise ValueError("tree ensemble returned invalid predictive spread")
+            return mu, std
         return mu, None
 
 
 def fit_regressor(family: str, X: np.ndarray, y: np.ndarray, *,
                   feature_names: Sequence[str], target_name: str, unit: str,
-                  training_fingerprint: str, seed: int = 0) -> FittedRegressor:
-    """Fit one target model; callers must already filter valid unique L4 rows."""
+                  training_fingerprint: str, seed: int = 0,
+                  feature_low: Sequence[float] | None = None,
+                  feature_high: Sequence[float] | None = None) -> FittedRegressor:
+    """Fit on verified-box coordinates, or fold-local training min/max if absent.
+
+    The transform is stored on the fitted model and repeated by ``predict``.  When
+    cross-validation supplies predeclared verified bounds, no held-out fold data
+    are used to estimate preprocessing.  Otherwise min/max are fitted using only
+    the X rows passed to this call.
+    """
     X = np.asarray(X, dtype=float)
     y = np.asarray(y, dtype=float).reshape(-1)
+    names = tuple(feature_names)
     if X.ndim != 2 or X.shape[0] != len(y):
         raise ValueError("X must be a 2-D matrix with one target per row")
-    if X.shape[1] != len(tuple(feature_names)):
-        raise ValueError("feature dimension does not match feature_names")
+    if X.shape[1] != len(names) or len(set(names)) != len(names):
+        raise ValueError("feature dimension must match unique feature_names")
     if len(y) < 8:
         raise ValueError("at least 8 independent valid training rows are required")
     if not np.all(np.isfinite(X)) or not np.all(np.isfinite(y)):
         raise ValueError("training data must be finite; invalid rows must be filtered upstream")
+    if (feature_low is None) != (feature_high is None):
+        raise ValueError("feature_low and feature_high must be supplied together")
+    if feature_low is None:
+        low = np.min(X, axis=0)
+        high = np.max(X, axis=0)
+        span = high - low
+        constant = span <= np.finfo(float).eps * np.maximum(1.0, np.abs(low))
+        padding = np.maximum(1.0, np.abs(low)) * 0.5
+        low = np.where(constant, low - padding, low)
+        high = np.where(constant, high + padding, high)
+        transform_name = "training_minmax_linear_v1"
+    else:
+        low = np.asarray(feature_low, dtype=float).reshape(-1)
+        high = np.asarray(feature_high, dtype=float).reshape(-1)
+        transform_name = "verified_box_linear_v1"
+    if (low.shape != (X.shape[1],) or high.shape != low.shape
+            or not np.all(np.isfinite(low)) or not np.all(np.isfinite(high))
+            or np.any(high <= low)):
+        raise ValueError("feature transform bounds must be finite and have positive width")
+    if feature_low is not None:
+        tol = 1e-12 * np.maximum(1.0, np.maximum(np.abs(low), np.abs(high)))
+        if np.any(X < low - tol) or np.any(X > high + tol):
+            raise ValueError("training features fall outside the supplied verified box")
+    X_model = (X - low) / (high - low)
+    if not np.all(np.isfinite(X_model)):
+        raise ValueError("transformed training features must be finite")
     from threadpoolctl import threadpool_limits
     estimator = _estimator(family, X.shape[1], seed)
     t0 = time.perf_counter()
     with threadpool_limits(limits=1):
-        estimator.fit(X, y)
+        estimator.fit(X_model, y)
     elapsed = time.perf_counter() - t0
     scale = float(np.std(y, ddof=0))
     if not np.isfinite(scale) or scale <= 1e-14:
@@ -151,9 +214,12 @@ def fit_regressor(family: str, X: np.ndarray, y: np.ndarray, *,
         "gaussian_process_matern": "GP predictive standard deviation; validate empirically",
         "extra_trees": "between-tree spread; disagreement diagnostic, not a posterior",
     }.get(family, "no native predictive variance; NOT_CALIBRATED until conformal calibration")
-    return FittedRegressor(family, estimator, tuple(feature_names), target_name, unit,
-                           training_fingerprint, len(y), elapsed, scale,
-                           raw_uncertainty_note=note)
+    return FittedRegressor(
+        family=family, estimator=estimator, feature_names=names,
+        target_name=target_name, unit=unit, training_fingerprint=training_fingerprint,
+        n_training=len(y), training_runtime_s=elapsed, target_scale=scale,
+        raw_uncertainty_note=note, feature_low=tuple(float(v) for v in low),
+        feature_high=tuple(float(v) for v in high), feature_transform=transform_name)
 
 
 def regression_metrics(y_true: np.ndarray, y_pred: np.ndarray, *,
@@ -191,27 +257,57 @@ def regression_metrics(y_true: np.ndarray, y_pred: np.ndarray, *,
     }
 
 
+def minimum_calibration_samples(coverage: float = 0.90) -> int:
+    """Minimum n for a finite split-conformal order statistic at ``coverage``."""
+    if not np.isfinite(coverage) or not 0.0 < coverage < 1.0:
+        raise ValueError("coverage must lie strictly between zero and one")
+    from fractions import Fraction
+    exact = Fraction(str(float(coverage)))
+    return math.ceil(exact / (1 - exact))
+
+
+def _finite_vector(values: np.ndarray, name: str) -> np.ndarray:
+    array = np.asarray(values, dtype=float)
+    if array.ndim > 2 or (array.ndim == 2 and 1 not in array.shape):
+        raise ValueError(f"{name} must be a vector")
+    vector = array.reshape(-1)
+    if vector.size == 0 or not np.all(np.isfinite(vector)):
+        raise ValueError(f"{name} must be a nonempty finite vector")
+    return vector
+
+
 def conformal_radius(y_true: np.ndarray, y_pred: np.ndarray, *, coverage: float = 0.90) -> float:
     """Finite-sample split-conformal absolute-residual radius.
 
-    Marginal coverage requires exchangeability between the calibration and test
-    draws; it does not promise conditional coverage in every parameter region.
+    Marginal coverage requires exchangeability between calibration and test
+    draws; it does not promise conditional coverage by parameter region. If the
+    requested order statistic is n+1, no finite radius can provide the stated
+    guarantee, so insufficient calibration data are rejected rather than clamped.
     """
-    if not 0.0 < coverage < 1.0:
-        raise ValueError("coverage must lie strictly between zero and one")
-    residual = np.abs(np.asarray(y_true, float).reshape(-1)
-                      - np.asarray(y_pred, float).reshape(-1))
-    residual = residual[np.isfinite(residual)]
-    if residual.size == 0:
-        raise ValueError("calibration set has no finite residuals")
-    k = min(residual.size, int(math.ceil((residual.size + 1) * coverage)))
+    required = minimum_calibration_samples(coverage)
+    truth = _finite_vector(y_true, "calibration truth")
+    pred = _finite_vector(y_pred, "calibration prediction")
+    if truth.shape != pred.shape:
+        raise ValueError("calibration truth and prediction shapes must match")
+    if len(truth) < required:
+        raise ValueError(f"coverage {coverage:g} requires at least {required} calibration points; got {len(truth)}")
+    residual = np.abs(truth - pred)
+    from fractions import Fraction
+    exact_coverage = Fraction(str(float(coverage)))
+    k = math.ceil((len(residual) + 1) * exact_coverage)
+    if k > len(residual):
+        raise ValueError("requested conformal order statistic is not finite for this sample size")
     return float(np.partition(residual, k - 1)[k - 1])
 
 
 def interval_metrics(y_true: np.ndarray, y_pred: np.ndarray, *, radius: float,
                      nominal_coverage: float = 0.90) -> dict:
-    truth = np.asarray(y_true, float).reshape(-1)
-    pred = np.asarray(y_pred, float).reshape(-1)
+    truth = _finite_vector(y_true, "interval truth")
+    pred = _finite_vector(y_pred, "interval prediction")
+    if truth.shape != pred.shape:
+        raise ValueError("interval truth and prediction shapes must match")
+    if not np.isfinite(nominal_coverage) or not 0.0 < nominal_coverage < 1.0:
+        raise ValueError("nominal_coverage must lie strictly between zero and one")
     if radius < 0 or not np.isfinite(radius):
         raise ValueError("interval radius must be finite and nonnegative")
     covered = np.abs(truth - pred) <= radius
@@ -233,9 +329,13 @@ def raw_interval_coverage(y_true: np.ndarray, mean: np.ndarray,
     """Measure nominal 90% GP/ensemble Gaussian intervals without calibration."""
     if std is None:
         return {"status": "NOT_AVAILABLE", "reason": "model family supplies no predictive spread"}
-    y = np.asarray(y_true, float).reshape(-1)
-    mu = np.asarray(mean, float).reshape(-1)
-    sd = np.asarray(std, float).reshape(-1)
+    y = _finite_vector(y_true, "uncertainty truth")
+    mu = _finite_vector(mean, "uncertainty mean")
+    sd = _finite_vector(std, "predictive standard deviation")
+    if y.shape != mu.shape or y.shape != sd.shape:
+        raise ValueError("uncertainty truth, mean and standard deviation shapes must match")
+    if not np.isfinite(z) or z <= 0 or np.any(sd < 0):
+        raise ValueError("uncertainty multiplier must be positive and spreads nonnegative")
     sd = np.maximum(sd, 1e-14)
     covered = np.abs(y - mu) <= z * sd
     return {"status": "MEASURED_NOT_ASSUMED_CALIBRATED",
@@ -265,7 +365,9 @@ def compare_families(X_train: np.ndarray, y_train: np.ndarray,
                      X_validation: np.ndarray, y_validation: np.ndarray, *,
                      feature_names: Sequence[str], target_name: str, unit: str,
                      training_fingerprint: str, seed: int = 0,
-                     families: Sequence[str] = MODEL_FAMILIES) -> tuple[dict[str, FittedRegressor], dict[str, dict]]:
+                     families: Sequence[str] = MODEL_FAMILIES,
+                     feature_low: Sequence[float] | None = None,
+                     feature_high: Sequence[float] | None = None) -> tuple[dict[str, FittedRegressor], dict[str, dict]]:
     """Fit all predeclared families; select later using validation RMSE only."""
     fitted: dict[str, FittedRegressor] = {}
     scores: dict[str, dict] = {}
@@ -276,7 +378,8 @@ def compare_families(X_train: np.ndarray, y_train: np.ndarray,
         model = fit_regressor(family, X_train, ytr, feature_names=feature_names,
                               target_name=target_name, unit=unit,
                               training_fingerprint=training_fingerprint,
-                              seed=seed + i)
+                              seed=seed + i, feature_low=feature_low,
+                              feature_high=feature_high)
         pred, std = model.predict(xv, return_std=True)
         scores[family] = regression_metrics(yv, pred, train_y=ytr)
         scores[family]["training_runtime_s"] = model.training_runtime_s

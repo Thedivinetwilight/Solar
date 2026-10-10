@@ -30,7 +30,8 @@ from .domain import (IN_DOMAIN_UNCERTAIN, IN_DOMAIN_VALIDATED, MODEL_UNAVAILABLE
                      nearest_distances, normalize)
 from .engine import SurrogateBundle, save_bundle
 from .models import (MODEL_FAMILIES, compare_families, conformal_radius,
-                     interval_metrics, raw_interval_coverage, regression_metrics,
+                     interval_metrics, minimum_calibration_samples,
+                     raw_interval_coverage, regression_metrics,
                      select_family, fit_regressor, grouped_kfold_indices)
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -364,7 +365,8 @@ def _xy(rows: Sequence[dict], names: Sequence[str], target: str) -> tuple[np.nda
 
 
 def _monitor_stage(train_rows: Sequence[dict], validation_rows: Sequence[dict],
-                   names: Sequence[str], seed: int, stage: str) -> dict:
+                   names: Sequence[str], seed: int, stage: str,
+                   low: np.ndarray, high: np.ndarray) -> dict:
     xt, yt = _xy(train_rows, names, "pce_pct")
     xv, yv = _xy(validation_rows, names, "pce_pct")
     if len(xt) < 8 or len(xv) < 8:
@@ -373,7 +375,8 @@ def _monitor_stage(train_rows: Sequence[dict], validation_rows: Sequence[dict],
     models, scores = compare_families(
         xt, yt, xv, yv, feature_names=names, target_name="pce_pct", unit="%",
         training_fingerprint=fingerprint, seed=seed,
-        families=("ridge", "extra_trees", "gaussian_process_matern"))
+        families=("ridge", "extra_trees", "gaussian_process_matern"),
+        feature_low=low, feature_high=high)
     selected = select_family(scores)
     model = models[selected]
     pred, _ = model.predict(xv, return_std=False)
@@ -491,7 +494,8 @@ def _grouped_cv(train_rows: Sequence[dict], feature_names: Sequence[str],
         fp = dataset_fingerprint([valid[i] for i in tr])
         model = fit_regressor(family, X[tr], y[tr], feature_names=feature_names,
                               target_name=target, unit=OUTPUT_UNITS[target],
-                              training_fingerprint=fp, seed=seed + fold)
+                              training_fingerprint=fp, seed=seed + fold,
+                              feature_low=low, feature_high=high)
         pred, _ = model.predict(X[te], return_std=False)
         fold_results.append({"fold": fold,
                              "held_out_design_families": sorted(set(groups[te])),
@@ -521,7 +525,9 @@ def _metrics_on_selected_model(model, rows: Sequence[dict], names: Sequence[str]
 def _single_model_set(*, train_rows_: Sequence[dict], validation_rows: Sequence[dict],
                       calibration_rows: Sequence[dict] | None,
                       feature_names: Sequence[str], target: str, seed: int,
-                      training_fp: str, families: Sequence[str] = MODEL_FAMILIES) -> tuple:
+                      training_fp: str, feature_low: np.ndarray | None = None,
+                      feature_high: np.ndarray | None = None,
+                      families: Sequence[str] = MODEL_FAMILIES) -> tuple:
     """Select on VALIDATION, then calibrate once on disjoint CALIBRATION rows."""
     xt, yt = _xy(train_rows_, feature_names, target)
     xv, yv = _xy(validation_rows, feature_names, target)
@@ -530,7 +536,8 @@ def _single_model_set(*, train_rows_: Sequence[dict], validation_rows: Sequence[
     fitted, scores = compare_families(
         xt, yt, xv, yv, feature_names=feature_names, target_name=target,
         unit=OUTPUT_UNITS[target], training_fingerprint=training_fp,
-        seed=seed, families=families)
+        seed=seed, families=families, feature_low=feature_low,
+        feature_high=feature_high)
     ordered = sorted(scores, key=lambda f: (scores[f]["rmse"],
                                             MODEL_FAMILIES.index(f)))
     chosen = fitted[ordered[0]]
@@ -539,7 +546,7 @@ def _single_model_set(*, train_rows_: Sequence[dict], validation_rows: Sequence[
     calibration_status = "NOT_CALIBRATED"
     calibration_metrics = None
     q = None
-    if len(yc) >= 8:
+    if len(yc) >= minimum_calibration_samples(0.90):
         cal_pred, _ = chosen.predict(xc, return_std=False)
         q = conformal_radius(yc, cal_pred, coverage=0.90)
         calibration_metrics = regression_metrics(yc, cal_pred, train_y=yt)
@@ -601,7 +608,7 @@ def _run_model_comparison(samples: list[dict], *, feature_names: Sequence[str],
                 train_rows_=target_tr, validation_rows=target_va,
                 calibration_rows=target_cal, feature_names=feature_names, target=target,
                 seed=seed + 1000 * ri + oi * 31,
-                training_fp=target_fp)
+                training_fp=target_fp, feature_low=low, feature_high=high)
             selected_models[regime_name][target] = model
             alternatives[regime_name][target] = other_models
             xt, yt = _xy(target_tr, feature_names, target)
@@ -633,6 +640,9 @@ def _run_model_comparison(samples: list[dict], *, feature_names: Sequence[str],
                 "calibration_points": len(yc),
                 "calibration_data_fingerprint": model.calibration_fingerprint,
                 "target_scale_train_sd_or_range": target_scale,
+                "feature_transform": model.feature_transform,
+                "feature_transform_low": list(model.feature_low),
+                "feature_transform_high": list(model.feature_high),
                 "validation_rmse": float(scores[model.family]["rmse"]),
                 "calibration_rmse": cal_rmse,
                 "conformal_90_radius": (float(model.conformal_radius)
@@ -873,7 +883,8 @@ def run_campaign(*, seed: int = 20261009,
         va = [r for r in samples if r.get("role") == "VALIDATION"
               and r.get("status") == VALID_FOR_SURROGATE
               and r.get("operating_regime", {}).get("name") == regime.name]
-        monitor = _monitor_stage(tr, va, feature_names, seed + 300 + ri, "after_stage1")
+        monitor = _monitor_stage(tr, va, feature_names, seed + 300 + ri,
+                                 "after_stage1", low, high)
         stage_history[regime.name].append(_clean_stage_monitor(monitor))
         previous_rmse = monitor["validation_metrics"]["rmse"]
         if previous_rmse > ACCURACY_TARGET_PCE_RMSE_PP:
@@ -899,7 +910,8 @@ def run_campaign(*, seed: int = 20261009,
                 metadata=metadata, progress={"phase": "adaptive-1", "regime": regime.name})
             solver_benchmarks.append({"role": "ADAPTIVE_TRAIN", "regime": regime.name, **summary})
             tr = training_rows(samples, regime_name=regime.name, level="L4")
-            monitor = _monitor_stage(tr, va, feature_names, seed + 320 + ri, "after_adaptive_batch_1")
+            monitor = _monitor_stage(tr, va, feature_names, seed + 320 + ri,
+                                     "after_adaptive_batch_1", low, high)
             monitor["sampled_error_regions"] = regions
             monitor["adaptive_batch_n"] = len(rows)
             stage_history[regime.name].append(_clean_stage_monitor(monitor))
@@ -933,7 +945,8 @@ def run_campaign(*, seed: int = 20261009,
             solver_benchmarks.append({"role": "TRAIN_STAGE2", "regime": regime.name, **summary})
             train_family_mats[regime.name].append(X2)
             tr = training_rows(samples, regime_name=regime.name, level="L4")
-            monitor2 = _monitor_stage(tr, va, feature_names, seed + 410 + ri, "after_stage2_global_lhs")
+            monitor2 = _monitor_stage(tr, va, feature_names, seed + 410 + ri,
+                                      "after_stage2_global_lhs", low, high)
             monitor2["prior_validation_rmse"] = previous_rmse
             monitor2["relative_improvement_from_prior_stage"] = float(
                 (previous_rmse - monitor2["validation_metrics"]["rmse"])
@@ -968,7 +981,7 @@ def run_campaign(*, seed: int = 20261009,
                 adaptive_counts[regime.name] += len(rows)
                 tr = training_rows(samples, regime_name=regime.name, level="L4")
                 monitor3 = _monitor_stage(tr, va, feature_names, seed + 430 + ri,
-                                          "after_adaptive_batch_2")
+                                          "after_adaptive_batch_2", low, high)
                 monitor3["prior_validation_rmse"] = final_rmse
                 monitor3["relative_improvement_from_prior_stage"] = float(
                     (final_rmse - monitor3["validation_metrics"]["rmse"])
@@ -1112,7 +1125,7 @@ def run_campaign(*, seed: int = 20261009,
         optimum_model, optimum_alts, opt_scores, opt_calibration = _single_model_set(
             train_rows_=tr3, validation_rows=va3, calibration_rows=cal3,
             feature_names=names3, target="pce_pct", seed=seed + 920 + ri,
-            training_fp=fp3)
+            training_fp=fp3, feature_low=low3, feature_high=high3)
         optimum_model_key = f"optima_slice_pce:{regime.name}"
         specialized_models[optimum_model_key] = {"model": optimum_model,
             "alternatives": optimum_alts, "feature_names": names3,
@@ -1225,13 +1238,15 @@ def run_campaign(*, seed: int = 20261009,
     interaction_fits, interaction_scores = compare_families(
         Xi_tr, yi_tr, Xi_va, yi_va, feature_names=INTERACTION_AXES,
         target_name="pce_pct", unit="%", training_fingerprint=interaction_fp,
-        seed=seed + 1110)
+        seed=seed + 1110,
+        feature_low=np.asarray([low_map[n] for n in INTERACTION_AXES], float),
+        feature_high=np.asarray([high_map[n] for n in INTERACTION_AXES], float))
     interaction_selected = select_family(interaction_scores)
     interaction_model = interaction_fits[interaction_selected]
     interaction_calibration_status = "NOT_CALIBRATED"
     interaction_calibration_metrics = None
     interaction_q = None
-    if len(yi_cal) >= 8:
+    if len(yi_cal) >= minimum_calibration_samples(0.90):
         interaction_cal_pred, _ = interaction_model.predict(Xi_cal_actual, return_std=False)
         interaction_q = conformal_radius(yi_cal, interaction_cal_pred, coverage=0.90)
         interaction_calibration_metrics = regression_metrics(yi_cal, interaction_cal_pred,

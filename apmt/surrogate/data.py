@@ -363,10 +363,18 @@ def save_dataset(path: str | os.PathLike[str], samples: Sequence[dict], *,
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
     deduped = mark_duplicates(samples)
-    valid_records = [s for s in deduped if s.get("status") != INVALID_PHYSICS]
-    rejected = [s for s in deduped if s.get("status") in
-                (INVALID_PHYSICS, OUTSIDE_VERIFIED_DOMAIN, INCOMPLETE_OUTPUT,
-                 DUPLICATE_OR_DEPENDENT, UNRESOLVED_DATA)]
+    unknown_statuses = sorted({str(s.get("status")) for s in deduped
+                               if s.get("status") not in STATUSES})
+    if unknown_statuses:
+        raise ValueError(f"dataset contains unknown sample statuses: {unknown_statuses}")
+    invalid_with_outputs = [s.get("sample_id", "") for s in deduped
+                            if s.get("status") == INVALID_PHYSICS
+                            and s.get("outputs") is not None]
+    if invalid_with_outputs:
+        raise ValueError("INVALID_PHYSICS rows must not retain numeric outputs: "
+                         + ", ".join(invalid_with_outputs[:5]))
+    valid_records = [s for s in deduped if s.get("status") == VALID_FOR_SURROGATE]
+    rejected = [s for s in deduped if s.get("status") != VALID_FOR_SURROGATE]
     body = {
         "contract_version": DATA_CONTRACT_VERSION,
         "label": "PRE-GATE / MODEL-OBSERVED / EXPLORATORY; L4/L5 simulations are not experimental data",
@@ -404,9 +412,40 @@ def save_dataset(path: str | os.PathLike[str], samples: Sequence[dict], *,
 
 
 def load_dataset(path: str | os.PathLike[str]) -> dict:
+    """Load and validate a data-contract artifact without promoting rejected rows."""
     p = Path(path)
     with gzip.open(p, "rt", encoding="utf-8") as f:
         body = json.load(f)
+    if not isinstance(body, dict):
+        raise TypeError("dataset root must be an object")
     if body.get("contract_version") != DATA_CONTRACT_VERSION:
         raise ValueError(f"unsupported surrogate data contract {body.get('contract_version')!r}")
+    valid_records = body.get("valid_records")
+    rejection_ledger = body.get("rejection_ledger")
+    if not isinstance(valid_records, list) or not isinstance(rejection_ledger, list):
+        raise TypeError("dataset must contain valid_records and rejection_ledger lists")
+    if any(not isinstance(row, dict) for row in valid_records + rejection_ledger):
+        raise ValueError("dataset record partitions may contain only objects")
+    if any(row.get("status") != VALID_FOR_SURROGATE for row in valid_records):
+        raise ValueError("valid_records may contain only VALID_FOR_SURROGATE rows")
+    if any(row.get("status") not in STATUSES or row.get("status") == VALID_FOR_SURROGATE
+           for row in rejection_ledger):
+        raise ValueError("rejection_ledger must contain only recognized rejected statuses")
+    if any(row.get("status") == INVALID_PHYSICS and row.get("outputs") is not None
+           for row in rejection_ledger):
+        raise ValueError("INVALID_PHYSICS rows must not retain numeric outputs")
+    records = valid_records + rejection_ledger
+    summary = body.get("summary")
+    record_count = summary.get("n_records") if isinstance(summary, dict) else None
+    if (isinstance(record_count, bool) or not isinstance(record_count, int)
+            or record_count != len(records)):
+        raise ValueError("dataset record partitions do not match the stored record count")
+    fingerprint = dataset_fingerprint(records)
+    if fingerprint != body.get("dataset_fingerprint"):
+        raise ValueError("dataset fingerprint does not match its valid/rejected records")
+    from ..repro.digest import physics_digest
+    digest_block = body.get("physics_digest")
+    stored_digest = digest_block.get("sha256") if isinstance(digest_block, dict) else None
+    if not stored_digest or physics_digest(body) != stored_digest:
+        raise ValueError("dataset physics digest is missing or invalid")
     return body

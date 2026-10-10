@@ -1960,3 +1960,150 @@ non-mutation). `ruff check` passed on the two changed Python files, and
 fingerprint and dataset/results physics digests, and matched the dataset, results
 JSON and excluded model-bundle file hashes and byte sizes to the recorded values
 above. The report checksum is maintained separately in `reports/.report_sha256`.
+
+## 41. Post-run V1.9-E correctness audit (2026-10-10)
+
+This is a **code and stored-record audit, not a new physical campaign**. The
+verified checkout was `Thedivinetwilight/Solar`, branch
+`arena/01a102e7-solar`, starting at local and fetched remote HEAD
+`afe4757cdc02b41fd9fbfab49d33503e6b37c134`. The existing V1.9-E data and results
+were read-only inputs. The campaign entry point and physics solver were not run;
+no new L4/L5 rows were generated, and no dataset or results JSON was rewritten.
+A separate in-memory model-only replay below reuses already-published training,
+validation, calibration, and final-holdout labels. Its final-holdout numbers are a
+post-hoc re-analysis of the same holdout in §40, not a new independent confirmation.
+
+The stricter loader accepts the committed dataset: **12,090 valid rows + 11
+rejected `INVALID_PHYSICS` rows = 12,101 records**; its stored fingerprint and
+physics digest verify, and none of the 11 invalid rows carries outputs. The tracked
+dataset and results hashes remain those recorded in §40.7. The reported
+52,831,723-byte joblib bundle is **not present in this checkout** (the results JSON
+still records its historical size/hash); it was not regenerated or substituted.
+The corrected model replay was held in memory and no replacement fitted-model
+artifact is claimed.
+
+### 41.1 Reproduced defects and narrow repairs
+
+| Area | Reproduced baseline defect | Repair and regression protection |
+| --- | --- | --- |
+| Feature scaling / leakage | The GP estimator comment said features were normalized, but the actual fit and prediction path passed raw registry-unit values. The raw-unit reproduction left all 14 initial Matérn ARD length scales at 0.25. | Fit and predict now use the same persisted linear transform: the predeclared shared verified box in campaign/CV/3-D/4-D fits, or training-only min/max when no box is supplied. Verified-box training rows outside the box, non-finite inputs, and incomplete serialized transform metadata fail closed. Regression tests inspect the stored transform, manual prediction transform, and fold-local fallback. |
+| Valid/rejected data partitions | The prior writer admitted every status except `INVALID_PHYSICS` into `valid_records` while also placing rejected statuses in `rejection_ledger`; a non-invalid rejected row could therefore occur in both partitions. | Save now admits only `VALID_FOR_SURROGATE` rows to `valid_records`, rejects unknown statuses and numeric `INVALID_PHYSICS` payloads, and load checks partition statuses, record count, dataset fingerprint, and physics digest. The saved v3 artifact passes these checks without modification. |
+| Split conformal | The old order statistic clamped an impossible `n+1` rank to `n` and discarded non-finite residuals. At 90% and `n=8`, that returned the maximum residual while implying a finite 90% split-conformal radius. | The finite-sample rank is no longer clamped and invalid/misaligned calibration vectors are rejected. At 90%, at least **9** calibration points are needed; smaller sets remain `NOT_CALIBRATED`. The campaign and interaction calibration paths use this threshold. All stored primary calibration groups have 64 or more rows. |
+| Candidate L4/L5 checks | Missing L4 outputs were skipped during interval checks; absent L5 tolerances defaulted to infinity, and an empty `all(checks.values())` could pass. | Every predicted target must have an L4 value and conformal interval. Every required L5 target must have finite L4/L5 values and a finite, nonnegative calibrated tolerance; missing evidence fails the cross-check. Tests cover missing L5 output and missing tolerance. The three historical probes each contain 11/11 L5 target checks and all are true, so this defect did not falsify those stored checks. Their candidate-eligibility flags remain historical, because models/support were not reranked and the candidates were not physically reverified. |
+| Operating conditions / schema | A misspelled extra key or a supplied irradiance/temperature inconsistent with the chosen regime was silently ignored by inference. | Unknown/non-string parameter keys now return `INVALID_INPUT`; supplied `irradiance_suns` or `temperature_k` must match the named trained regime or return `MODEL_UNAVAILABLE`. Regression tests cover typos, mixed key types, and regime mismatch. |
+| Optional dependency / packaging | An unconditional `pymupdf` import made M1/M3 digitizer tests and the CI-check script fail when the optional PDF renderer or external manuscript was absent. Package metadata also named nonexistent `apmt.reproducibility` and omitted real packages. | PyMuPDF is imported only by M2, and `main(require_pdf=False)` marks M2 unavailable if its optional dependency/source is missing. Setuptools discovers only `apmt*`; an isolated `pip wheel --no-deps` build succeeds and contains `apmt.reporting` and `apmt.repro`. |
+
+The transform now reaches the stage monitor, global family comparison, grouped CV,
+optimum-slice and interaction-slice model fits. Model cards record transform type
+and bounds. The old ignored joblib, if restored from another location, is not a
+corrected bundle: its model objects predate this transform metadata and will fail
+closed rather than silently predict in a different coordinate system.
+
+### 41.2 Model-only replay on the immutable V1.9-E rows
+
+The global replay re-fit all 11 outputs in all three regimes from the existing L4
+`TRAIN`/`ADAPTIVE_TRAIN` rows, selected families only on the existing
+`VALIDATION` rows, calibrated on disjoint existing `CALIBRATION` rows, and evaluated
+on the existing `FINAL_HOLDOUT` rows. It used the recorded verified-box bounds and
+campaign seed schedule; it generated **zero** new physics labels. This was not a
+campaign rerun. Since §40 had already reported this final holdout, the replay is
+post-hoc and must not be described as a fresh independent test.
+
+For primary PCE, family selection and holdout metrics reproduce the existing
+selected-family results: the corrected GP scores improve, but GP is not the selected
+PCE family. Values below are percentage points; conformal coverage is empirical on
+the reused final holdout.
+
+| Regime | Raw-unit → box-scaled Matérn validation RMSE | Selected family | Selected-model validation RMSE | Final-holdout RMSE | q90 radius | Final coverage |
+| --- | ---: | --- | ---: | ---: | ---: | ---: |
+| Concentrated · 3 sun · 25 °C | 3.9874 → 1.0026 | ExtraTrees | 0.6789 | 1.1004 | 2.0048 | 90.5% (95) |
+| Hot ambient · 1 sun · 65 °C | 2.7955 → 1.1586 | HistGradientBoosting | 0.7542 | 1.0866 | 1.3085 | 76.0% (96) |
+| Nominal · 1 sun · 25 °C | 3.4772 → 1.4050 | HistGradientBoosting | 0.7850 | 0.9919 | 1.7427 | 91.7% (96) |
+
+Across all global output/regime cards, **25 of 33 selected families changed** under
+the corrected feature coordinates; the changed selections are Matérn GPs. The three
+PCE selections and their reported validation/holdout metrics did not change. The
+box-scaled global replay emitted **258 scikit-learn `ConvergenceWarning`s** across
+its Matérn fits; many ARD length scales reached the configured upper bound 4.0.
+Those warnings are retained as a limitation; kernel bounds were not tuned after
+seeing the reused holdout. Other-target model cards and uncertainty radii in the
+stored results JSON remain the historical raw-unit fits, not outputs of this
+in-memory replay.
+
+Replaying the complete 11-output inference path on the old final holdout gives the
+following support statuses. `OUT_OF_DOMAIN` here means unsupported by the
+calibrated support profile; these rows are still inside the hard verified box and
+are not physics-invalid. The geometric OOD counts remain 4/8/18, while the changed
+model-derived uncertainty/disagreement calibration increases the uncertain share
+relative to the historical table in §40.3.
+
+| Regime | `IN_DOMAIN_VALIDATED` | `IN_DOMAIN_UNCERTAIN` | `OUT_OF_DOMAIN` | Total |
+| --- | ---: | ---: | ---: | ---: |
+| Concentrated · 3 sun · 25 °C | 12 | 79 | 4 | 95 |
+| Hot ambient · 1 sun · 65 °C | 14 | 74 | 8 | 96 |
+| Nominal · 1 sun · 25 °C | 16 | 62 | 18 | 96 |
+
+The replay still validates only a small fraction of final points, particularly in
+the concentrated regime. The legacy family, support, and prediction cards are
+preserved as historical evidence; neither they nor this post-hoc replay opens the
+experimental gate.
+
+### 41.3 Replayed optimum and interaction slices
+
+The 3-D optimum re-fit reuses the stored 128/64/64 train/validation/calibration rows
+and the stored 41-point-per-axis L4 curves. Matérn was selected in all three
+regimes. Coordinates below are on the original curves; no new curve or device
+solve was run. Each re-fit improves the historical curve errors, but residual peak
+location errors and approximation error remain, so none of these peaks is promoted
+as an optimum.
+
+| Regime | Axis | Stored L4 curve max | Box-scaled model max | Coordinate error | Curve RMSE (pp) | Max abs error (pp) |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| Concentrated · 3 sun · 25 °C | `arc_thickness_nm` | 77.0000 | 82.5000 | 5.5000 | 0.1096 | 0.2295 |
+| Concentrated · 3 sun · 25 °C | `perovskite_eg_ev` | 1.6250 | 1.6700 | 0.0450 | 0.2356 | 0.6284 |
+| Concentrated · 3 sun · 25 °C | `perovskite_thickness_nm` | 723.7500 | 791.2500 | 67.5000 | 0.1993 | 0.5380 |
+| Hot ambient · 1 sun · 65 °C | `arc_thickness_nm` | 82.5000 | 88.0000 | 5.5000 | 0.2669 | 0.4915 |
+| Hot ambient · 1 sun · 65 °C | `perovskite_eg_ev` | 1.6250 | 1.6850 | 0.0600 | 0.3041 | 0.9856 |
+| Hot ambient · 1 sun · 65 °C | `perovskite_thickness_nm` | 723.7500 | 723.7500 | 0.0000 | 0.1787 | 0.3561 |
+| Nominal · 1 sun · 25 °C | `arc_thickness_nm` | 77.0000 | 82.5000 | 5.5000 | 0.1050 | 0.4509 |
+| Nominal · 1 sun · 25 °C | `perovskite_eg_ev` | 1.6250 | 1.6250 | 0.0000 | 0.6675 | 1.7841 |
+| Nominal · 1 sun · 25 °C | `perovskite_thickness_nm` | 723.7500 | 690.0000 | 33.7500 | 0.2909 | 0.5580 |
+
+For the dedicated 4-D interaction slice, the box-scaled GP has validation RMSE
+0.1312 pp, calibration RMSE 0.1539 pp, q90 radius 0.2655 pp and 91.25% empirical
+coverage on the same 7,680-point L4 Saltelli design. Its pair estimate is **+0.375341**
+versus the unchanged L4 estimate **+0.388876** (difference −0.013535). The support
+counts are unchanged at 4,508 validated / 2,333 uncertain / 839 OOD; therefore the
+surrogate pair remains **not reportable over the full design**, regardless of the
+closer point estimate or measured interval coverage. No pairwise bootstrap interval
+is claimed. The L4 pair remains the reportable computational result above its
+predeclared estimator floor; neither quantity is experimental evidence.
+
+### 41.4 CI, README, and disposition
+
+The import/package repairs were checked locally on Python **3.11.2**. The full
+suite after the code repairs reported **194 passed, 1 skipped, 5 warnings**; the
+skip is the unavailable external accepted-manuscript PDF, and the test warnings are
+scikit-learn GP convergence warnings. The focused surrogate/digitizer suite
+reported 32 passed and the same one PDF-dependent skip. The wheel build completed.
+Ruff 0.17.0 is **not clean** on this legacy tree: it reports 31 findings on the
+changed files versus 32 on the unmodified base snapshot under the same command;
+most are pre-existing import/style/unused-import findings, and unrelated code was
+not reformatted.
+
+The latest GitHub Actions runs checked were `38024407624` on `afe4757` and
+`38022700520` on `cd7cbc0`. Both Python 3.10/3.12 matrix jobs have empty step lists;
+the job annotations say the job was not started because account payments failed or
+the spending limit must be increased. The downloadable run log request returned
+EOF. These are **billing-blocked workflow starts**, not test failures and not
+successful tests. Python 3.10 and 3.12 remain untested; local Python 3.11 coverage
+must not be generalized to them.
+
+The README was not edited. Its status header still says V1.9-B (2026-10-03), and
+its digital-twin row says 21.02% while its caveat says 24.41%. The 24.41% value has
+no repository match outside README; `data/v19_calibration.json` records 21.019875%
+as a fit to digitized evidence, not experimental validation. This provenance
+conflict is preserved for reconciliation, not silently resolved. The V1.8
+experimental gate remains **CLOSED** and APMT remains
+`BLOCKED_BY_BASELINE_VALIDATION`; no experimental validation, optimizer advancement,
+or V1.9-F work is claimed.

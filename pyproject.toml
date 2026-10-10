@@ -29,14 +29,9 @@ surrogate = ["scikit-learn>=1.4,<2.0", "joblib>=1.2"]
 [project.scripts]
 apmt-calibrate = "apmt.cli:main"
 
-[tool.setuptools]
-packages = [
-    "apmt", "apmt.core", "apmt.params", "apmt.spectra", "apmt.materials",
-    "apmt.optics", "apmt.device", "apmt.inference", "apmt.validation",
-    "apmt.experiments", "apmt.multifidelity", "apmt.sensitivity",
-    "apmt.optimize", "apmt.surrogate", "apmt.uq", "apmt.discovery",
-    "apmt.reproducibility", "apmt.results", "apmt.voi", "apmt.synthetic",
-]
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["apmt*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

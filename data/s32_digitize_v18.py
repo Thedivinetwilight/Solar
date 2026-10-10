@@ -63,7 +63,6 @@ import os
 import sys
 import numpy as np
 from PIL import Image
-import pymupdf
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -72,15 +71,15 @@ PDF = "data/sources/al_ashouri_accepted_manuscript.pdf"
 
 
 class SourceUnavailable(RuntimeError):
-    """A required raster source is not present in the working tree.
+    """A source or optional dependency required for M2 is unavailable.
 
     The 69-page accepted manuscript PDF is deliberately NOT committed (it is a
     large external source; ``.gitignore`` excludes ``data/sources/*.pdf`` and a
-    sha256 is recorded in manifests/ instead). Methods that re-render a figure
-    page from the PDF therefore cannot run in a clean checkout, and they must
-    say so loudly instead of silently degrading. The deterministic, non-mutating
-    call is ``main(write=False, require_pdf=False)``; writing the historical
-    artifacts is the explicit command ``python data/s32_digitize_v18.py --write``.
+    sha256 is recorded in manifests/ instead). M2 also requires the optional
+    PyMuPDF package. A clean checkout can run M1/M3 without either; use
+    ``main(write=False, require_pdf=False)`` to mark only M2 unavailable. Writing
+    historical artifacts remains the explicit command
+    ``python data/s32_digitize_v18.py --write``.
     """
 
 def col2nm(c):  return (c + 109.0) / 0.5845
@@ -357,6 +356,13 @@ def _run_m2(run):
     Requires the external manuscript PDF (not committed). The mask/scale numbers
     are frozen from V1.8 cycle 2 and are deliberately not re-tuned here.
     """
+    try:
+        import pymupdf
+    except ImportError as exc:  # optional dependency, required only for M2
+        raise SourceUnavailable(
+            "M2 requires the optional digitization dependency: "
+            "install `apmt-solar[digitization]` to render the external manuscript PDF"
+        ) from exc
     page = pymupdf.open(PDF)[54]
     rect = pymupdf.Rect(144.4, 388.5, 451.0, 623.0)
     S = 200 / 72.0
@@ -440,16 +446,24 @@ def main(write: bool = False, require_pdf: bool = True):
     r = run(yl, 1.0, "sahli", 45.0);         results["sahli_M1"] = r
 
     # M2: 200 dpi re-render (same PDF rect), HZB color
+    m2_unavailable_reason = None
     if not os.path.exists(PDF):
+        m2_unavailable_reason = (
+            f"{PDF!r} is not present in this checkout (large external source, "
+            "excluded by .gitignore); M2 200-dpi re-render NOT VERIFIED")
+    else:
+        try:
+            results["hzb_M2"] = _run_m2(run)
+        except SourceUnavailable as exc:
+            if require_pdf:
+                raise
+            m2_unavailable_reason = str(exc)
+    if m2_unavailable_reason is not None:
         if require_pdf:
             raise SourceUnavailable(
-                f"{PDF!r} is not present in this checkout (large external "
-                f"source, excluded by .gitignore). M2 cannot be reproduced. "
-                f"Call main(write=False, require_pdf=False) to skip only M2.")
-        print(f"{PDF!r} missing -> hzb_M2 NOT VERIFIED (source unavailable)")
+                m2_unavailable_reason + ". Call main(write=False, require_pdf=False) to skip only M2.")
+        print(f"hzb_M2 NOT VERIFIED (source or optional dependency unavailable): {m2_unavailable_reason}")
         results["hzb_M2"] = None
-    else:
-        results["hzb_M2"] = _run_m2(run)
     # M3 manual
     a3p = np.array([x for x, _ in M3_PEROV]); e3p = np.array([y for _, y in M3_PEROV])
     a3s = np.array([x for x, _ in M3_SI]);     e3s = np.array([y for _, y in M3_SI])
@@ -477,8 +491,8 @@ def main(write: bool = False, require_pdf: bool = True):
         if r is None:
             out.setdefault("methods", {})[tag] = {
                 "status": "SOURCE_MISSING",
-                "reason": f"{PDF!r} not present in this checkout; M2 200-dpi "
-                          f"re-render NOT VERIFIED in this run"}
+                "reason": m2_unavailable_reason or
+                          "M2 source or optional dependency unavailable; re-render NOT VERIFIED"}
             continue
         d = {
             "perovskite_jph": round(r["iph"], 4),
