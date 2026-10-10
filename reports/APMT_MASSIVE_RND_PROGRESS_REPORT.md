@@ -2091,6 +2091,13 @@ changed files versus 32 on the unmodified base snapshot under the same command;
 most are pre-existing import/style/unused-import findings, and unrelated code was
 not reformatted.
 
+After code commit `af58b6b`, `tools/ci_checks.py` passed **6/6**: eight artifact
+hashes and one physics digest, deterministic digitizer rerun, provenance, gate
+consistency, report/checksum consistency, and no tracked-data mutation. Its
+pre-commit run was 5/6 only because the `git-clean` check saw the intentional,
+not-yet-committed `data/s32_digitize_v18.py` edit; the script did not mutate that
+file. The clean post-commit run passed.
+
 The latest GitHub Actions runs checked were `38024407624` on `afe4757` and
 `38022700520` on `cd7cbc0`. Both Python 3.10/3.12 matrix jobs have empty step lists;
 the job annotations say the job was not started because account payments failed or
