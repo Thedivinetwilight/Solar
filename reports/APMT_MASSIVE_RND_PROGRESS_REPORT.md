@@ -2921,10 +2921,16 @@ E/F/G campaign data are pre-R1/T21/U1.** Consequences:
 
 ### 43.7 Commit record
 
-Branch `arena/a6cb5ca0-solar` only (no main push, no PR). This commit takes
-the working tree to the audited state: all 43.2 repairs + tests, the
+Branch `arena/a6cb5ca0-solar` only (no main push, no PR). Commit `5d5811f`
+takes the working tree to the audited state: all 43.2 repairs + tests, the
 regenerated calibration + minimal pins diff, the F/G methods (tools, libs,
-tests), and this report section with a regenerated `reports/.report_sha256`.
-Deliberately excluded (left untracked): the 4 stale F/G data/results files
-(43.5). Commit hash recorded in git log; file manifest is the commit itself.
+tests), and this report section. Merge `d47d991` folds in the remote F/G
+stack (`bd6cb8a`..`7d50249`: methods identical to the local copies,
+§§41–42 byte-identical, plus the 4 committed F/G data files); conflicts
+(report append point, `.report_sha256`) resolved by taking the local
+superset text and regenerating the sha. A follow-up commit corrects two
+pre-merge wordings in this section (43.1 CI score, 43.5 data tracking
+status) with amendments recorded here, not silently. Post-merge:
+`ci_checks` 6/6, full suite 264 passed + 1 skipped (carried over — the
+merge adds data files only, zero code delta vs `5d5811f`).
 
