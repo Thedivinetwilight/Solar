@@ -8,8 +8,9 @@ from __future__ import annotations
 
 import math
 import time
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Mapping, Sequence
+from typing import Any
 
 import numpy as np
 
@@ -17,7 +18,18 @@ MODEL_FAMILIES = (
     "constant", "ridge", "sparse_polynomial", "extra_trees",
     "hist_gradient_boosting", "gaussian_process_matern",
 )
-MODEL_COMPLEXITY = {name: i for i, name in enumerate(MODEL_FAMILIES)}
+# V1.9-F finding: ``gaussian_process_matern`` receives RAW physical units in
+# every campaign path (no caller normalizes), while its kernel length-scale
+# prior (init 0.25, bounds 0.025..4.0) is designed for verified-box-normalized
+# features.  On the 14-D scope the kernel matrix is therefore numerically the
+# identity, the marginal likelihood is flat, the optimizer never moves, and
+# the family collapses to the training mean (bit-identical to ``constant``).
+# The original family is preserved unchanged as the V1.9-E reference; the
+# corrected, explicitly box-normalized variant below is compared on identical
+# splits in V1.9-F.  ``MODEL_FAMILIES`` (the V1.9-E default comparison set)
+# is unchanged so existing campaign code paths are bit-identical.
+MODEL_FAMILIES_V19F = MODEL_FAMILIES + ("gaussian_process_matern_boxnorm",)
+MODEL_COMPLEXITY = {name: i for i, name in enumerate(MODEL_FAMILIES_V19F)}
 MODEL_CONFIG = {
     "constant": {"strategy": "mean"},
     "ridge": {"alpha": 1.0},
@@ -31,7 +43,17 @@ MODEL_CONFIG = {
     "gaussian_process_matern": {"kernel": "Constant * ARD-Matern(2.5) + fixed nugget",
                                 "nu": 2.5, "initial_length_scale": 0.25,
                                 "optimizer": "training marginal likelihood",
-                                "n_restarts_optimizer": 0, "normalize_y": True},
+                                "n_restarts_optimizer": 0, "normalize_y": True,
+                                "feature_preprocessing": "NONE (raw physical "
+                                "units; V1.9-E reference behavior)"},
+    "gaussian_process_matern_boxnorm": {
+        "kernel": "Constant * ARD-Matern(2.5) + fixed nugget",
+        "nu": 2.5, "initial_length_scale": 0.25,
+        "optimizer": "training marginal likelihood",
+        "n_restarts_optimizer": 0, "normalize_y": True,
+        "feature_preprocessing": "fixed verified-box normalization to "
+        "[0, 1] inside the estimator (V1.9-F correction); bounds are part "
+        "of the fitted artifact, not learned from data"},
 }
 
 
@@ -43,14 +65,65 @@ def _sklearn():
         raise RuntimeError("surrogate models require `pip install -e '.[surrogate]'`") from exc
 
 
-def _estimator(family: str, n_features: int, seed: int):
+class BoxNormalizer:
+    """Fixed verified-box normalization to [0, 1] (V1.9-F, sklearn-compatible).
+
+    Bounds are construction parameters, never learned from data, so no
+    information leaks across validation folds.  Implements the ``fit`` /
+    ``transform`` / ``get_params`` / ``set_params`` protocol so it can sit
+    inside a ``Pipeline`` ahead of the Gaussian process.
+    """
+
+    def __init__(self, low=None, high=None):
+        self.low = None if low is None else np.asarray(low, float).reshape(-1)
+        self.high = None if high is None else np.asarray(high, float).reshape(-1)
+
+    def get_params(self, deep: bool = True) -> dict:
+        return {"low": self.low, "high": self.high}
+
+    def set_params(self, **params):
+        for key, value in params.items():
+            if key not in ("low", "high"):
+                raise ValueError(f"unknown BoxNormalizer parameter {key!r}")
+            setattr(self, key, None if value is None else np.asarray(value, float).reshape(-1))
+        return self
+
+    def fit(self, X, y=None):
+        if self.low is None or self.high is None:
+            raise ValueError("BoxNormalizer requires fixed low/high bounds")
+        span = np.asarray(self.high, float) - np.asarray(self.low, float)
+        if np.any(span <= 0):
+            raise ValueError("BoxNormalizer bounds must have positive width")
+        return self
+
+    def transform(self, X):
+        if self.low is None or self.high is None:
+            raise ValueError("BoxNormalizer requires fixed low/high bounds")
+        x = np.asarray(X, float)
+        return (x - self.low) / (self.high - self.low)
+
+
+def _matern_regressor(n_features: int, seed: int):
+    from sklearn.gaussian_process import GaussianProcessRegressor
+    from sklearn.gaussian_process.kernels import ConstantKernel, Matern, WhiteKernel
+
+    kernel = (ConstantKernel(1.0, (1e-2, 1e2))
+              * Matern(length_scale=np.full(n_features, 0.25),
+                       length_scale_bounds=(0.025, 4.0), nu=2.5)
+              + WhiteKernel(noise_level=1e-8,
+                            noise_level_bounds=(1e-10, 1e-3)))
+    return GaussianProcessRegressor(kernel=kernel, alpha=1e-10,
+                                    normalize_y=True, n_restarts_optimizer=0,
+                                    random_state=int(seed), copy_X_train=True)
+
+
+def _estimator(family: str, n_features: int, seed: int, *,
+               low=None, high=None):
     _sklearn()
     from sklearn.dummy import DummyRegressor
     from sklearn.ensemble import ExtraTreesRegressor, HistGradientBoostingRegressor
-    from sklearn.gaussian_process import GaussianProcessRegressor
-    from sklearn.gaussian_process.kernels import ConstantKernel, Matern, WhiteKernel
     from sklearn.linear_model import ElasticNet, Ridge
-    from sklearn.pipeline import make_pipeline
+    from sklearn.pipeline import Pipeline, make_pipeline
     from sklearn.preprocessing import PolynomialFeatures, StandardScaler
 
     if family == "constant":
@@ -73,16 +146,19 @@ def _estimator(family: str, n_features: int, seed: int):
                                              l2_regularization=1.0,
                                              random_state=int(seed))
     if family == "gaussian_process_matern":
-        # Features are normalized to the verified box before this is constructed;
-        # the trainable ARD length-scales and amplitude are fit from training data.
-        kernel = (ConstantKernel(1.0, (1e-2, 1e2))
-                  * Matern(length_scale=np.full(n_features, 0.25),
-                           length_scale_bounds=(0.025, 4.0), nu=2.5)
-                  + WhiteKernel(noise_level=1e-8,
-                                noise_level_bounds=(1e-10, 1e-3)))
-        return GaussianProcessRegressor(kernel=kernel, alpha=1e-10,
-                                        normalize_y=True, n_restarts_optimizer=0,
-                                        random_state=int(seed), copy_X_train=True)
+        # V1.9-E reference behavior, preserved bit-identically: no feature
+        # preprocessing (raw physical units reach the kernel).  The earlier
+        # comment claiming pre-normalized inputs was incorrect for every
+        # campaign path; see the MODEL_FAMILIES_V19F note above.
+        return _matern_regressor(n_features, seed)
+    if family == "gaussian_process_matern_boxnorm":
+        # V1.9-F correction: the documented box normalization, applied inside
+        # the estimator so training and prediction cannot diverge.
+        if low is None or high is None:
+            raise ValueError("gaussian_process_matern_boxnorm requires verified-box bounds")
+        return Pipeline([("boxnorm", BoxNormalizer(low=np.asarray(low, float),
+                                                  high=np.asarray(high, float))),
+                         ("gp", _matern_regressor(n_features, seed))])
     raise ValueError(f"unknown surrogate family {family!r}")
 
 
@@ -116,6 +192,11 @@ class FittedRegressor:
         if self.family == "gaussian_process_matern" and return_std:
             mu, sigma = self.estimator.predict(x, return_std=True)
             return np.asarray(mu, float).reshape(-1), np.asarray(sigma, float).reshape(-1)
+        if self.family == "gaussian_process_matern_boxnorm" and return_std:
+            steps = self.estimator.named_steps
+            mu, sigma = steps["gp"].predict(steps["boxnorm"].transform(x),
+                                            return_std=True)
+            return np.asarray(mu, float).reshape(-1), np.asarray(sigma, float).reshape(-1)
         mu = np.asarray(self.estimator.predict(x), float).reshape(-1)
         if self.family == "extra_trees" and return_std:
             # Tree spread is a disagreement diagnostic, not a calibrated posterior.
@@ -126,8 +207,14 @@ class FittedRegressor:
 
 def fit_regressor(family: str, X: np.ndarray, y: np.ndarray, *,
                   feature_names: Sequence[str], target_name: str, unit: str,
-                  training_fingerprint: str, seed: int = 0) -> FittedRegressor:
-    """Fit one target model; callers must already filter valid unique L4 rows."""
+                  training_fingerprint: str, seed: int = 0,
+                  bounds: tuple[np.ndarray, np.ndarray] | None = None) -> FittedRegressor:
+    """Fit one target model; callers must already filter valid unique L4 rows.
+
+    ``bounds`` (verified-box low/high) is required only by the V1.9-F
+    ``gaussian_process_matern_boxnorm`` family; every other family ignores it,
+    so existing callers are unaffected.
+    """
     X = np.asarray(X, dtype=float)
     y = np.asarray(y, dtype=float).reshape(-1)
     if X.ndim != 2 or X.shape[0] != len(y):
@@ -139,7 +226,10 @@ def fit_regressor(family: str, X: np.ndarray, y: np.ndarray, *,
     if not np.all(np.isfinite(X)) or not np.all(np.isfinite(y)):
         raise ValueError("training data must be finite; invalid rows must be filtered upstream")
     from threadpoolctl import threadpool_limits
-    estimator = _estimator(family, X.shape[1], seed)
+    if bounds is None:
+        estimator = _estimator(family, X.shape[1], seed)
+    else:
+        estimator = _estimator(family, X.shape[1], seed, low=bounds[0], high=bounds[1])
     t0 = time.perf_counter()
     with threadpool_limits(limits=1):
         estimator.fit(X, y)
@@ -149,6 +239,8 @@ def fit_regressor(family: str, X: np.ndarray, y: np.ndarray, *,
         scale = max(float(np.ptp(y)), 1e-14)
     note = {
         "gaussian_process_matern": "GP predictive standard deviation; validate empirically",
+        "gaussian_process_matern_boxnorm": ("box-normalized GP predictive standard "
+                                            "deviation; validate empirically"),
         "extra_trees": "between-tree spread; disagreement diagnostic, not a posterior",
     }.get(family, "no native predictive variance; NOT_CALIBRATED until conformal calibration")
     return FittedRegressor(family, estimator, tuple(feature_names), target_name, unit,
@@ -204,7 +296,7 @@ def conformal_radius(y_true: np.ndarray, y_pred: np.ndarray, *, coverage: float 
     residual = residual[np.isfinite(residual)]
     if residual.size == 0:
         raise ValueError("calibration set has no finite residuals")
-    k = min(residual.size, int(math.ceil((residual.size + 1) * coverage)))
+    k = min(residual.size, math.ceil((residual.size + 1) * coverage))
     return float(np.partition(residual, k - 1)[k - 1])
 
 
@@ -243,7 +335,7 @@ def raw_interval_coverage(y_true: np.ndarray, mean: np.ndarray,
             "empirical_coverage": float(np.mean(covered)),
             "mean_interval_width": float(np.mean(2.0 * z * sd)),
             "mean_predictive_std": float(np.mean(sd)),
-            "n": int(len(y))}
+            "n": len(y)}
 
 
 def grouped_kfold_indices(groups: Sequence[str], n_splits: int = 3) -> list[tuple[np.ndarray, np.ndarray]]:
@@ -265,8 +357,13 @@ def compare_families(X_train: np.ndarray, y_train: np.ndarray,
                      X_validation: np.ndarray, y_validation: np.ndarray, *,
                      feature_names: Sequence[str], target_name: str, unit: str,
                      training_fingerprint: str, seed: int = 0,
-                     families: Sequence[str] = MODEL_FAMILIES) -> tuple[dict[str, FittedRegressor], dict[str, dict]]:
-    """Fit all predeclared families; select later using validation RMSE only."""
+                     families: Sequence[str] = MODEL_FAMILIES,
+                     bounds: tuple[np.ndarray, np.ndarray] | None = None) -> tuple[dict[str, FittedRegressor], dict[str, dict]]:
+    """Fit all predeclared families; select later using validation RMSE only.
+
+    ``bounds`` is forwarded to :func:`fit_regressor` and is required only
+    when ``families`` includes ``gaussian_process_matern_boxnorm``.
+    """
     fitted: dict[str, FittedRegressor] = {}
     scores: dict[str, dict] = {}
     ytr = np.asarray(y_train, float).reshape(-1)
@@ -276,7 +373,7 @@ def compare_families(X_train: np.ndarray, y_train: np.ndarray,
         model = fit_regressor(family, X_train, ytr, feature_names=feature_names,
                               target_name=target_name, unit=unit,
                               training_fingerprint=training_fingerprint,
-                              seed=seed + i)
+                              seed=seed + i, bounds=bounds)
         pred, std = model.predict(xv, return_std=True)
         scores[family] = regression_metrics(yv, pred, train_y=ytr)
         scores[family]["training_runtime_s"] = model.training_runtime_s
