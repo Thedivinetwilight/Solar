@@ -2098,13 +2098,15 @@ pre-commit run was 5/6 only because the `git-clean` check saw the intentional,
 not-yet-committed `data/s32_digitize_v18.py` edit; the script did not mutate that
 file. The clean post-commit run passed.
 
-The latest GitHub Actions runs checked were `38024407624` on `afe4757` and
-`38022700520` on `cd7cbc0`. Both Python 3.10/3.12 matrix jobs have empty step lists;
-the job annotations say the job was not started because account payments failed or
-the spending limit must be increased. The downloadable run log request returned
-EOF. These are **billing-blocked workflow starts**, not test failures and not
-successful tests. Python 3.10 and 3.12 remain untested; local Python 3.11 coverage
-must not be generalized to them.
+The pre-audit GitHub Actions runs checked were `38024407624` on `afe4757` and
+`38022700520` on `cd7cbc0`; both show the same billing annotation. On the pushed
+audit code/report commit `42d2cda`, Actions run `38029451810` produced `test (3.10)`
+and `test (3.12)` check runs with empty step lists. Each failure annotation says the
+job was not started because recent account payments failed or the spending limit
+must be increased; each also carries an informational `ubuntu-latest` migration
+notice. The current run-log request returned EOF. These are **billing-blocked
+workflow starts**, not test failures and not successful tests. Python 3.10 and 3.12
+remain untested; local Python 3.11 coverage must not be generalized to them.
 
 The README was not edited. Its status header still says V1.9-B (2026-10-03), and
 its digital-twin row says 21.02% while its caveat says 24.41%. The 24.41% value has
